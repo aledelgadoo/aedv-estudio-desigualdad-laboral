@@ -1,59 +1,381 @@
 ---
-title: "Dashboard - Desigualdades regionales y sectoriales en costes laborales y horas trabajadas en la UE"
+title: "Dashboard - Datos Laborales"
 author: "Alejandro Delgado Valera"
-date: "`r Sys.Date()`"
-output: html_document
+output: flexdashboard::flex_dashboard
 runtime: shiny
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r global, include=FALSE}
+library(pxR)
+library(MASS)
+library(shinydashboard)
+library(datasets)
+library(highcharter) 
+library(fpp3)
+library(RColorBrewer)
+library(openxlsx)  
+library(leaflet)  
+library(geojsonio)
+library(plotly)
+library(ggplot2)
+library(tidyverse)
+pdf(file = NULL) # evita errores en shiny 
+
+# asociamos funciones a determinadas librerías para evitar posibles errores 
+filter <- dplyr::filter # Filtra filas según condiciones
+select <- dplyr::select # Selecciona columnas
+mutate <- dplyr::mutate # Crea o modifica columnas
+arrange <- dplyr::arrange # Ordena filas
+group_by <- dplyr::group_by # Agrupa datos
+summarise <- dplyr::summarise # Resume variables (por ejemplo, con medias, conteos)
+summarize <- dplyr::summarize # Lo mismo que summarise
+rename <- dplyr::rename # Cambia nombres de columnas
+distinct <- dplyr::distinct # Elimina filas duplicadas
+slice<- dplyr::slice # Selecciona filas por posición
+relocate<- dplyr::relocate # Reordena columnas
+
+selectInput <- shiny::selectInput
+
+# Colocamos las funciones en este mismo fichero para evitar dependencias ####
+
+# Función de Pareto
+# Dado un vector de números y un nivel de significancia de Pareto, calcula el valor del vector tal que la suma de los valores por encima de ese valor supera el total de la suma multiplicado por el nivel de significancia.
+
+ParetoValue <- function(
+        v, # vector numérico
+        ParetoSignificancia # número en [0,1] con el grado de significancia de Pareto
+){
+    
+    x <- sort(v,decreasing = TRUE)
+    return(x[which(cumsum(x)>=ParetoSignificancia*sum(x))[1]])
+}
+
+
+#FUNCIÓN PARA DIBUJAR UNA PREDICCIÓN DINÁMICA CON USANDO plotly
+GraficoDinamicoArima95CI <- function(
+ data, # tssible con con los datos originales
+ date, # string con el nombre se la variable temporal en data
+ value, # string con el nombre se la variable numérica en data
+ prediccion, # objeto con la predicción usando ARIMA u otro modelo
+ TITLE # título del gráfico 
+){
+  
+  fc <- prediccion %>%
+  mutate(lower = NA) %>% 
+  mutate(upper = NA) 
+
+  for(k in 1:nrow(fc)){
+    fc$lower[k] <- fc$.mean[k] - 1.96*unlist(fc[[value]][k])[2]
+    fc$upper[k] <- fc$.mean[k] + 1.96*unlist(fc[[value]][k])[2]
+  }
+  
+  data2 <- data 
+  x <- data2[[date]][1]
+  if(!(is.numeric(x) && !inherits(x, "Date") && !inherits(x, "POSIXt"))){
+    data2[[date]] <- as.Date(data2[[date]])
+    fc[[date]] <- as.Date(fc[[date]])
+  }
+  
+
+
+p <- plot_ly() %>%
+  add_lines(x=data2[[date]], y = data2[[value]], name = "Observación", line = list(color = "black")) %>%
+  add_lines(x=fc[[date]], y = fc$.mean, name = "Predicción", line = list(color = "blue")) %>%
+  add_ribbons(x = fc[[date]], ymin = fc$lower, ymax = fc$upper, 
+              name = "95% CI", fillcolor = "rgba(0,0,150,0.2)", line = list(width = 0)) %>%
+  layout(title = TITLE)
+
+return(p) 
+}
+  
+
+#FUNCIÓN PARA DIBUJAR UN MAPA COROPLÉTICO USANDO leaflet
+MapaCoroplético <- function(
+ geoj, # objeto gráfico geojson con los contornos de las regiones
+ value, # vector de valores para colorear 
+ region_labels, # vector de etiquetas para los desplegables
+ legend_title # título de la leyenda 
+){
+pal <- colorQuantile("YlOrRd", value, n = 9)
+p <-  geoj %>%
+    leaflet() %>%  
+    #setView(lng = 25, lat = 22, zoom = 2)  %>% 
+    addPolygons(
+      fillColor = ~pal(value), 
+      weight = 2,
+      opacity = 1,
+      color = "white",
+      dashArray = "3",
+      fillOpacity = 0.7,
+      highlightOptions = highlightOptions( 
+        weight = 2,
+        color = rgb(0.2,0.2,0.2),
+        dashArray = "",
+        fillOpacity = 0.7,
+        bringToFront = TRUE
+      ),
+      label = region_labels 
+    ) %>% 
+    addLegend("bottomleft", 
+      pal = pal, 
+      values = value,
+      title = legend_title,
+      labFormat = function(type, cuts, p) {
+        n = length(cuts) 
+        x = (cuts[-n] + cuts[-1])/2
+        x=prettyNum(round(x,
+            digits=max(5-nchar(as.character(round(max(na.omit(value))))),0)), 
+            big.mark = ","
+        )
+        as.character(x)
+      },
+      opacity = 1
+    )
+  return(p)
+}
+
+
+
+# CÁLCULO DE LA TRANSFORMACIÓN DE YEO–JOHNSON A PARTIR DE UN VECTOR Y UN VALOR DE lambda 
+yeo.johnson <- function(y, lambda) {
+  y_t <- numeric(length(y))
+  
+  # Para y >= 0
+  pos_idx <- which(y >= 0)
+  if (lambda == 0) {
+    y_t[pos_idx] <- log(y[pos_idx] + 1)
+  } else {
+    y_t[pos_idx] <- ((y[pos_idx] + 1)^lambda - 1) / lambda
+  }
+  
+  # Para y < 0
+  neg_idx <- which(y < 0)
+  if (lambda == 2) {
+    y_t[neg_idx] <- -log(-y[neg_idx] + 1)
+  } else {
+    y_t[neg_idx] <- -(((-y[neg_idx] + 1)^(2 - lambda) - 1) / (2 - lambda))
+  }
+  
+  return(y_t)
+}
+
+
+# ESTIMACIÓN DE lambda PARA LA TRANSFORMACIÓN DE YEO–JOHNSON DE UN VECTOR y
+# OPTIMIZANDO  EL R2 DE LA REGRESIÓN LINEAL CON UN VECTOR x.  
+optimize.yeojohnson.R2 <- function(x, y, lambda_range = c(-1, 1.9)) {
+ 
+  # Función objetivo: R² negativo (porque optimize minimiza)
+  r2_neg <- function(lambda) {
+    y_t <- yeo.johnson(y, lambda)
+    modelo <- lm(y_t ~ x)
+    return(-summary(modelo)$r.squared)  # queremos maximizar R²
+  }
+  
+  # Optimización de lambda
+  opt <- optimize(r2_neg, interval = lambda_range)
+  
+  # Se retorna el valor óptimo de lambda 
+  return(opt$minimum)
+}
+
 ```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+<!-- Carga inicial de los datos -->
+```{r analisis-data-raw, results=F}
+data_raw <- read_csv('data/nama_10r_2lp10.csv') %>% 
+    as_tibble()
 
-To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+data_raw
+```
+```{r analisis-inicial, results=F}
+real_names <- read_csv('data/eurostac_real_nuts.csv') %>% 
+    as_tibble()
 
-## Inputs and Outputs
 
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+data <- data_raw %>% 
+    select(-freq) %>% 
+    rename(year = TIME_PERIOD, sector = nace_r2, item = na_item) %>% 
+    left_join(real_names, by='geo') %>% 
+    select(geo, NUTS, full_name, year, sector, item, unit, values) %>% 
+    mutate(sector_name = case_when(
+        sector == "TOTAL" ~ "Total actividades",
+        sector == "O-U" ~ "Adm. pública, educación y salud",
+        sector == "O-Q" ~ "Adm. pública, defensa y educación",
+        sector == "B-E" ~ "Industria",
+        sector == "K-N" ~ "Finanzas e inmobiliarias",
+        sector == "F" ~ "Construcción",
+        sector == "M_N" ~ "Profesionales y científicas",
+        sector == "A" ~ "Agricultura y pesca",
+        sector == "C" ~ "Manufactura",
+        sector == "G-J" ~ "Comercio y transporte",
+        sector == "R-U" ~ "Artes y otros servicios",
+        sector == "G-I" ~ "Comercio y alojamiento",
+        sector == "J" ~ "Información y comunicación",
+        sector == "K" ~ "Finanzas",
+        sector == "L" ~ "Inmobiliarias",
+        TRUE ~ "Otro"
+        )) %>% 
+    relocate(sector_name, .after=sector)
+    
 
-```{r eruptions, echo=FALSE}
-inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
-  
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
+data
+```
+
+Series temporales
+=================
+
+```{r widgets-seleccion-seriesTemporales}
+# Widgets para selección de parámetros #
+# --- Relación entre indicadores (códigos del dataset) y las unidades disponibles ---
+indicador_unidades <- list(
+  "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP", "PCH_PRE"),
+  "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP", "PCH_PRE"),
+  "HW_EMP"     = c("HW", "PCH_PRE")
 )
 
-renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+# --- Nombres descriptivos para mostrar en el selector ---
+indicadores_labels <- c(
+    "Coste laboral medio / persona" = "D1_SAL_PER",
+    "Coste laboral / hora trabajada" = "D1_SAL_HW",
+    "Horas trabajadas" = "HW_EMP"
+)
+
+unidad_labels <- c(
+    "EUR" = "EUR",
+    "Moneda nacional" = "NAC",
+    "Porcentaje UE27" = "PC_EU27_2020_MEUR_CP",
+    "Var. porcentual" = "PCH_PRE",
+    "Horas trabajadas" = "HW"
+)
+
+# --- Selectores de parámetros ---
+div(
+  style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
   
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
+  div(
+    selectInput(
+      "indicador",
+      label = "Indicador:",
+      choices = indicadores_labels,
+      selected = "Coste laboral medio / persona"
+    )
+  ),
+  
+  div(
+    selectInput(
+      "unidad",
+      label = "Unidad:",
+      choices = unidad_labels,
+      selected = "EUR"
+    )
+  )
+)
+
+# --- Para que no se puedan seleccionar unidades que no existen ---
+observe({
+    req(input$indicador) # Confirmamos que haya algo seleccionado
+    
+    # obtén el código del indicador seleccionado (por ejemplo "D1_SAL_HW")
+    indicador_sel <- input$indicador
+    
+    # busca las unidades válidas para ese indicador
+    unidades_validas <- indicador_unidades[[indicador_sel]]
+    
+    # filtra tus etiquetas de unidades (para mostrar solo las disponibles)
+    unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
+    
+    # actualiza el selector de unidad con esas opciones
+    updateSelectInput(
+        inputId = "unidad",
+        choices = unidades_filtradas,
+        selected = unidades_filtradas[1]
+    )
 })
 ```
 
-## Embedded Application
+Column {.tabset}
+--------------------------------------------------
+```{r agrupaciones-paises}
+# España y Canarias (si están codificados así en tu dataset)
+referencia <- c("ES", "ES7")  # ← "IC" es el código NUTS de Canarias (ajústalo si en tu dataset se llama distinto)
 
-It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
 
-```{r tabsets, echo=FALSE}
-shinyAppDir(
-  system.file("examples/06_tabsets", package = "shiny"),
-  options = list(
-    width = "100%", height = 550
-  )
+paises_principales <- c(
+  referencia,
+  "DE", # Alemania
+  "FR", # Francia
+  "IT", # Italia
+  "NL", # Países Bajos
+  "BE", # Bélgica
+  "SE", # Suecia
+  "PL", # Polonia
+  "AT", # Austria
+  "DK", # Dinamarca
+  "FI", # Finlandia
+  "IE", # Irlanda
+  "PT", # Portugal
+  "CZ", # Chequia
+  "RO", # Rumanía
+  "HU"  # Hungría
+)
+
+paises_resto <- c(
+  referencia,
+  "BG", # Bulgaria
+  "HR", # Croacia
+  "CY", # Chipre
+  "EE", # Estonia
+  "EL", # Grecia
+  "LT", # Lituania
+  "LU", # Luxemburgo
+  "LV", # Letonia
+  "MT", # Malta
+  "SI", # Eslovenia
+  "SK", # Eslovaquia
+  "RS", # Serbia
+  "MK"  # Macedonia del Norte
 )
 ```
 
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
 
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+### Países 1
+```{r}
+# Países 1
+renderPlotly({
+  data %>%
+    filter(geo %in% paises_principales, item == input$indicador, unit == input$unidad) %>%
+    ggplot(aes(year,y=values)) +
+    geom_line() +
+    facet_wrap(~full_name,scales = "free_y",ncol=4) +
+    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
+    labs(x="",y="")
+})
+```
 
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+### Países 2
+```{r}
+# Países 2
+renderPlotly({
+  data %>%
+    filter(geo %in% paises_resto, item == input$indicador, unit == input$unidad) %>%
+    ggplot(aes(year,y=values)) +
+    geom_line()+
+    facet_wrap(~full_name,scales = "free_y",ncol=4) +
+    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
+    labs(x="",y="")
+})
+```
 
-
-
+### CCAA
+```{r}
+# CCAA
+renderPlotly({
+  data %>%
+    filter(substr(geo, 1, 2) == "ES", NUTS == 2, item == input$indicador, unit == input$unidad) %>%
+    ggplot(aes(year,y=values)) +
+    geom_line()+
+    facet_wrap(~full_name,scales = "free_y",ncol=4) +
+    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
+    labs(x="",y="")
+})
+```
