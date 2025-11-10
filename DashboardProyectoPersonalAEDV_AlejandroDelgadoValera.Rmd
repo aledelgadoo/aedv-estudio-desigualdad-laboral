@@ -220,6 +220,18 @@ data <- data_raw %>%
 
 data
 ```
+```{r archivos-geoj, results=F}
+geoj0 <- geojson_read("https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_20M_2024_4326_LEVL_0.geojson",  what = "sp")
+geoj0.tb <- geoj0 %>%
+  as_tibble() 
+geoj1 <- geojson_read("https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_20M_2024_4326_LEVL_1.geojson",  what = "sp")
+geoj1.tb <- geoj1 %>%
+  as_tibble() 
+geoj2 <- geojson_read("https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_20M_2024_4326_LEVL_2.geojson",  what = "sp")
+geoj2.tb <- geoj2 %>%
+  as_tibble() 
+```
+
 
 Series temporales
 =================
@@ -237,7 +249,7 @@ indicador_unidades <- list(
 indicadores_labels <- c(
     "Coste laboral medio / persona" = "D1_SAL_PER",
     "Coste laboral / hora trabajada" = "D1_SAL_HW",
-    "Horas trabajadas" = "HW_EMP"
+    "Horas trabajadas en promedio" = "HW_EMP"
 )
 
 unidad_labels <- c(
@@ -245,7 +257,7 @@ unidad_labels <- c(
     "Moneda nacional" = "NAC",
     "Porcentaje UE27" = "PC_EU27_2020_MEUR_CP",
     "Var. porcentual" = "PCH_PRE",
-    "Horas trabajadas" = "HW"
+    "Horas" = "HW"
 )
 
 # --- Selectores de parámetros ---
@@ -311,12 +323,11 @@ paises_principales <- c(
   "PL", # Polonia
   "AT", # Austria
   "DK", # Dinamarca
-  "FI", # Finlandia
   "IE", # Irlanda
   "PT", # Portugal
   "CZ", # Chequia
-  "RO", # Rumanía
-  "HU"  # Hungría
+  "HU", # Hungría
+  "LU"  # Luxemburgo
 )
 
 paises_resto <- c(
@@ -327,16 +338,16 @@ paises_resto <- c(
   "EE", # Estonia
   "EL", # Grecia
   "LT", # Lituania
-  "LU", # Luxemburgo
   "LV", # Letonia
+  "FI", # Finlandia
   "MT", # Malta
   "SI", # Eslovenia
+  "RO", # Rumanía
   "SK", # Eslovaquia
   "RS", # Serbia
   "MK"  # Macedonia del Norte
 )
 ```
-
 
 ### Países 1
 ```{r}
@@ -344,6 +355,10 @@ paises_resto <- c(
 renderPlotly({
   data %>%
     filter(geo %in% paises_principales, item == input$indicador, unit == input$unidad) %>%
+    # Poner Canarias y España primero
+    mutate(full_name = factor(full_name,
+                       levels = c("Canarias", "Spain",
+                                  setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
     ggplot(aes(year,y=values)) +
     geom_line() +
     facet_wrap(~full_name,scales = "free_y",ncol=4) +
@@ -358,6 +373,10 @@ renderPlotly({
 renderPlotly({
   data %>%
     filter(geo %in% paises_resto, item == input$indicador, unit == input$unidad) %>%
+    # Poner Canarias y España primero
+    mutate(full_name = factor(full_name,
+                       levels = c("Canarias", "Spain",
+                                  setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
     ggplot(aes(year,y=values)) +
     geom_line()+
     facet_wrap(~full_name,scales = "free_y",ncol=4) +
@@ -368,14 +387,20 @@ renderPlotly({
 
 ### CCAA
 ```{r}
-# CCAA
 renderPlotly({
   data %>%
-    filter(substr(geo, 1, 2) == "ES", NUTS == 2, item == input$indicador, unit == input$unidad) %>%
-    ggplot(aes(year,y=values)) +
-    geom_line()+
-    facet_wrap(~full_name,scales = "free_y",ncol=4) +
-    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
-    labs(x="",y="")
+    filter((substr(geo, 1, 2) == "ES" & NUTS == 2) | geo == "ES", item == input$indicador, unit == input$unidad) %>%
+    # Poner Canarias y España primero
+    mutate(full_name = factor(full_name,
+                       levels = c("Canarias", "Spain",
+                                  setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
+    ggplot(aes(year, y = values)) +
+    geom_line() +
+    facet_wrap(~full_name, scales = "free_y", ncol = 4) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(x = "", y = "")
 })
 ```
+
+Mapa coroplético
+================
