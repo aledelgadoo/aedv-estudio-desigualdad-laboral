@@ -235,13 +235,17 @@ geoj2.tb <- geoj2 %>%
 
 Series temporales
 =================
+```{r analisis-data-seriesTemporales-paises}
+data_series_paises <- data %>% 
+    filter(sector == "TOTAL")
+```
 
 ```{r widgets-seleccion-seriesTemporales}
 # Widgets para selección de parámetros #
 # --- Relación entre indicadores (códigos del dataset) y las unidades disponibles ---
 indicador_unidades <- list(
-  "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP", "PCH_PRE"),
-  "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP", "PCH_PRE"),
+  "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
+  "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
   "HW_EMP"     = c("HW", "PCH_PRE")
 )
 
@@ -280,8 +284,49 @@ div(
       choices = unidad_labels,
       selected = "EUR"
     )
+  ),
+  
+  conditionalPanel(
+    # La 'condition' es una expresión de JavaScript.
+    # Comprueba si el <input> 'ID_DE_TUS_PESTAÑAS' tiene el valor 'Comparativa CCAA'
+    condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa países'",
+    
+    div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
+      selectInput(
+        inputId = "paises_seleccion",
+        label = "Selecciona países:",
+        choices = data %>% 
+            filter(NUTS==0) %>% 
+            pull(full_name) %>%
+            unique() %>%
+            sort(),
+        multiple = TRUE,
+        selected = "Spain"
+      )
+    )
+  ),
+  
+  conditionalPanel(
+    # La 'condition' es una expresión de JavaScript.
+    # Comprueba si el <input> 'ID_DE_TUS_PESTAÑAS' tiene el valor 'Comparativa CCAA'
+    condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa CCAA'",
+    
+    div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
+      selectInput(
+        inputId = "ccaa_seleccion",
+        label = "Selecciona comunidades:",
+        choices = data %>% 
+            filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
+            pull(full_name) %>%
+            unique() %>%
+            sort(),
+        multiple = TRUE,
+        selected = "Canarias"
+      )
+    )
   )
 )
+
 
 # --- Para que no se puedan seleccionar unidades que no existen ---
 observe({
@@ -353,7 +398,7 @@ paises_resto <- c(
 ```{r}
 # Países 1
 renderPlotly({
-  data %>%
+  data_series_paises %>%
     filter(geo %in% paises_principales, item == input$indicador, unit == input$unidad) %>%
     # Poner Canarias y España primero
     mutate(full_name = factor(full_name,
@@ -371,7 +416,7 @@ renderPlotly({
 ```{r}
 # Países 2
 renderPlotly({
-  data %>%
+  data_series_paises %>%
     filter(geo %in% paises_resto, item == input$indicador, unit == input$unidad) %>%
     # Poner Canarias y España primero
     mutate(full_name = factor(full_name,
@@ -388,7 +433,7 @@ renderPlotly({
 ### CCAA
 ```{r}
 renderPlotly({
-  data %>%
+  data_series_paises %>%
     filter((substr(geo, 1, 2) == "ES" & NUTS == 2) | geo == "ES", item == input$indicador, unit == input$unidad) %>%
     # Poner Canarias y España primero
     mutate(full_name = factor(full_name,
@@ -400,6 +445,136 @@ renderPlotly({
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     labs(x = "", y = "")
 })
+```
+
+### Comparativa países
+```{r}
+selectInput(
+        inputId = "paises_seleccion",
+        label = "Selecciona países:",
+        choices = data %>% 
+            filter(NUTS==0) %>% 
+            pull(full_name) %>%
+            unique() %>%
+            sort(),
+        multiple = TRUE,
+        selected = "Spain"
+      )
+```
+
+```{r}
+div(renderHighchart({
+      req(input$paises_seleccion, input$indicador, input$unidad) # Validar que los inputs no estén vacíos
+      
+    # 1. Datos de las CCAA (del input)
+      data_paises <- data_series_paises %>%
+        filter(
+          full_name %in% input$paises_seleccion,
+          item == input$indicador,
+          unit == input$unidad
+        ) %>%
+        arrange(year)
+        
+      # 2. Datos de EU27 (siempre)
+      data_eu <- data_series_paises %>%
+        filter(
+          geo == "EU27_2020", 
+          item == input$indicador,
+          unit == input$unidad
+        ) %>%
+        arrange(year)
+    
+      # 3. Gráfico base (con CCAA) y añadir serie de España
+      hchart(
+        data_paises, # Gráfico base con las CCAA seleccionadas
+        type = "line",
+        hcaes(x = year, y = values, group = full_name),
+        marker = list(enabled = TRUE)
+      ) %>%
+      
+        hc_add_series(
+          data = data_eu,          
+          type = "line",
+          hcaes(x = year, y = values),
+          name = "Media UE (Referencia)",
+          dashStyle = "Dash",   
+          color = "lightgrey",  
+          marker = list(enabled = FALSE) 
+        ) %>%
+        hc_title(text = "") %>%
+        hc_xAxis(title = list(text = NULL)) %>%
+        hc_yAxis(title = list(text = NULL)) %>%
+        hc_legend(enabled = TRUE) %>% 
+        hc_chart(height = 500)
+    })
+)
+
+```
+
+
+### Comparativa CCAA
+```{r}
+# Selector de comunidades
+selectInput(
+        inputId = "ccaa_seleccion",
+        label = "Selecciona comunidades:",
+        choices = data_series_paises %>% 
+            filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
+            pull(full_name) %>%
+            unique() %>%
+            sort(),
+        multiple = TRUE,
+        selected = "Canarias"
+      )
+```
+
+
+```{r}
+div(renderHighchart({
+      req(input$ccaa_seleccion, input$indicador, input$unidad) # Validar que los inputs no estén vacíos
+      
+    # 1. Datos de las CCAA (del input)
+      data_ccaa <- data_series_paises %>%
+        filter(
+          full_name %in% input$ccaa_seleccion, # Asumimos que "Spain" no viene aquí
+          item == input$indicador,
+          unit == input$unidad
+        ) %>%
+        arrange(year)
+        
+      # 2. Datos de España (siempre)
+      data_espana <- data_series_paises %>%
+        filter(
+          full_name == "Spain", 
+          item == input$indicador,
+          unit == input$unidad
+        ) %>%
+        arrange(year)
+    
+      # 3. Gráfico base (con CCAA) y añadir serie de España
+      hchart(
+        data_ccaa, # Gráfico base con las CCAA seleccionadas
+        type = "line",
+        hcaes(x = year, y = values, group = full_name),
+        marker = list(enabled = TRUE)
+      ) %>%
+      
+        hc_add_series(
+          data = data_espana,          
+          type = "line",
+          hcaes(x = year, y = values),
+          name = "España (Referencia)",
+          dashStyle = "Dash",   
+          color = "lightgrey",  
+          marker = list(enabled = FALSE) 
+        ) %>%
+        hc_title(text = "") %>%
+        hc_xAxis(title = list(text = NULL)) %>%
+        hc_yAxis(title = list(text = NULL)) %>%
+        hc_legend(enabled = TRUE) %>% 
+        hc_chart(height = 500)
+    })
+)
 ```
 
 Mapa coroplético
