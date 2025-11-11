@@ -244,12 +244,11 @@ filtrado_series_temporales <- reactive({
 ```
 
 ```{r ST_paises-widgets-seleccion}
-# Widgets para selección de parámetros #
 # --- Relación entre indicadores (códigos del dataset) y las unidades disponibles ---
 indicador_unidades <- list(
-  "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
-  "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
-  "HW_EMP"     = c("HW", "PCH_PRE")
+    "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
+    "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
+    "HW_EMP"     = c("HW", "PCH_PRE")
 )
 
 # --- Nombres descriptivos para mostrar en el selector ---
@@ -269,16 +268,17 @@ unidad_labels <- c(
 
 # --- Selectores de parámetros ---
 div(
-  style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
+    style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
   
-  div(
-    selectInput(
-      "indicador",
-      label = "Indicador:",
-      choices = indicadores_labels,
-      selected = "Coste laboral medio / persona"
-    )
-  ),
+    # - Indicador -
+    div(
+        selectInput(
+            "indicador",
+            label = "Indicador:",
+            choices = indicadores_labels,
+            selected = "Coste laboral medio / persona"
+        )
+    ),
   
     # - Unidad -
     div(
@@ -300,45 +300,45 @@ div(
         )
     ),
   
-  conditionalPanel(
-    # La 'condition' es una expresión de JavaScript.
-    # Comprueba si el <input> 'ID_DE_TUS_PESTAÑAS' tiene el valor 'Comparativa CCAA'
-    condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa países'",
+    # Condicional para la comparativa de países
+    conditionalPanel(
+        # La 'condition' es una expresión de JavaScript.
+        condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa países'",
     
-    div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-      selectInput(
-        inputId = "paises_seleccion",
-        label = "Selecciona países:",
-        choices = data %>% 
-            filter(NUTS==0) %>% 
-            pull(full_name) %>%
-            unique() %>%
-            sort(),
-        multiple = TRUE,
-        selected = "Spain"
-      )
-    )
-  ),
+        div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
+            selectInput(
+                inputId = "paises_seleccion",
+                label = "Selecciona países:",
+                choices = data %>% 
+                    filter(NUTS==0) %>% 
+                    pull(full_name) %>%
+                    unique() %>%
+                    sort(),
+            multiple = TRUE,
+            selected = "Spain"
+            )
+        )
+    ),
   
-  conditionalPanel(
-    # La 'condition' es una expresión de JavaScript.
-    # Comprueba si el <input> 'ID_DE_TUS_PESTAÑAS' tiene el valor 'Comparativa CCAA'
-    condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa CCAA'",
+    # Condicional para la comparativa de CCAA
+    conditionalPanel(
+        # La 'condition' es una expresión de JavaScript.
+        condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa CCAA'",
     
-    div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-      selectInput(
-        inputId = "ccaa_seleccion",
-        label = "Selecciona comunidades:",
-        choices = data %>% 
-            filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
-            pull(full_name) %>%
-            unique() %>%
-            sort(),
-        multiple = TRUE,
-        selected = "Canarias"
-      )
+        div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
+            selectInput(
+                inputId = "ccaa_seleccion",
+                label = "Selecciona comunidades:",
+                choices = data %>% 
+                    filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
+                    pull(full_name) %>%
+                    unique() %>%
+                    sort(),
+            multiple = TRUE,
+            selected = "Canarias"
+            )
+        )
     )
-  )
 )
 
 
@@ -363,14 +363,15 @@ observe({
     )
 })
 
+# --- Para que no se puedan seleccionar sectores que no existen ---
 observe({
     req(input$indicador, input$unidad) # Confirmamos que haya algo seleccionado
     
     # Filtramos los datos disponibles con los inputs actuales
     sectores_disponibles <- data %>%
         filter(
-          item == input$indicador,
-          unit == input$unidad
+            item == input$indicador,
+            unit == input$unidad
         ) %>%
         pull(sector_name) %>%
         unique() %>%
