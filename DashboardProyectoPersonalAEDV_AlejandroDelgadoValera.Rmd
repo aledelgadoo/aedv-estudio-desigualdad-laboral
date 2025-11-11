@@ -235,12 +235,15 @@ geoj2.tb <- geoj2 %>%
 
 Series temporales
 =================
-```{r analisis-data-seriesTemporales-paises}
-data_series_paises <- data %>% 
-    filter(sector == "TOTAL")
+```{r ST_paises-analisis-data}
+filtrado_series_temporales <- reactive({
+    tb <- data %>% 
+        filter(item == input$indicador, unit == input$unidad, sector_name == input$sector)
+    return(tb)
+})
 ```
 
-```{r widgets-seleccion-seriesTemporales}
+```{r ST_paises-widgets-seleccion}
 # Widgets para selección de parámetros #
 # --- Relación entre indicadores (códigos del dataset) y las unidades disponibles ---
 indicador_unidades <- list(
@@ -261,7 +264,7 @@ unidad_labels <- c(
     "Moneda nacional" = "NAC",
     "Porcentaje UE27" = "PC_EU27_2020_MEUR_CP",
     "Var. porcentual" = "PCH_PRE",
-    "Horas" = "HW"
+    "Horas anuales" = "HW"
 )
 
 # --- Selectores de parámetros ---
@@ -277,14 +280,25 @@ div(
     )
   ),
   
-  div(
-    selectInput(
-      "unidad",
-      label = "Unidad:",
-      choices = unidad_labels,
-      selected = "EUR"
-    )
-  ),
+    # - Unidad -
+    div(
+        selectInput(
+            "unidad",
+            label = "Unidad:",
+            choices = unidad_labels,
+            selected = "EUR"
+        )
+    ),
+  
+   # - Sector -
+    div(
+        selectInput(
+            inputId = "sector",
+            label = "Sector:",
+            choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))),
+            selected = "Total actividades"           
+        )
+    ),
   
   conditionalPanel(
     # La 'condition' es una expresión de JavaScript.
@@ -348,14 +362,35 @@ observe({
         selected = unidades_filtradas[1]
     )
 })
+
+observe({
+    req(input$indicador, input$unidad) # Confirmamos que haya algo seleccionado
+    
+    # Filtramos los datos disponibles con los inputs actuales
+    sectores_disponibles <- data %>%
+        filter(
+          item == input$indicador,
+          unit == input$unidad
+        ) %>%
+        pull(sector_name) %>%
+        unique() %>%
+        sort()
+
+    # Actualizamos las opciones del selector de sector
+    updateSelectInput(
+        inputId = "sector",
+        choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
+        selected = "Total actividades"
+      )
+})
 ```
+
 
 Column {.tabset}
 --------------------------------------------------
-```{r agrupaciones-paises}
-# España y Canarias (si están codificados así en tu dataset)
-referencia <- c("ES", "ES7")  # ← "IC" es el código NUTS de Canarias (ajústalo si en tu dataset se llama distinto)
-
+```{r ST_paises-agrupaciones-paises}
+# España y Canarias
+referencia <- c("ES", "ES7")
 
 paises_principales <- c(
   referencia,
@@ -395,13 +430,14 @@ paises_resto <- c(
 ```
 
 ### Países 1
-```{r}
+```{r ST_paises-paises1}
 # Países 1
 renderPlotly({
-  data_series_paises %>%
-    filter(geo %in% paises_principales, item == input$indicador, unit == input$unidad) %>%
-    # Poner Canarias y España primero
-    mutate(full_name = factor(full_name,
+  tb <- filtrado_series_temporales()
+    
+  tb %>% 
+    filter(geo %in% paises_principales) %>%
+    mutate(full_name = factor(full_name,  # Poner Canarias y España primero
                        levels = c("Canarias", "Spain",
                                   setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
     ggplot(aes(year,y=values)) +
@@ -413,13 +449,14 @@ renderPlotly({
 ```
 
 ### Países 2
-```{r}
+```{r ST_paises-paises2}
 # Países 2
 renderPlotly({
-  data_series_paises %>%
-    filter(geo %in% paises_resto, item == input$indicador, unit == input$unidad) %>%
-    # Poner Canarias y España primero
-    mutate(full_name = factor(full_name,
+  tb <- filtrado_series_temporales()
+    
+  tb %>% 
+    filter(geo %in% paises_resto) %>%
+    mutate(full_name = factor(full_name,  # Poner Canarias y España primero
                        levels = c("Canarias", "Spain",
                                   setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
     ggplot(aes(year,y=values)) +
@@ -431,12 +468,13 @@ renderPlotly({
 ```
 
 ### CCAA
-```{r}
+```{r ST_paises-ccaa}
 renderPlotly({
-  data_series_paises %>%
-    filter((substr(geo, 1, 2) == "ES" & NUTS == 2) | geo == "ES", item == input$indicador, unit == input$unidad) %>%
-    # Poner Canarias y España primero
-    mutate(full_name = factor(full_name,
+  tb <- filtrado_series_temporales()
+    
+  tb %>% 
+    filter((substr(geo, 1, 2) == "ES" & NUTS == 2) | geo == "ES") %>%
+    mutate(full_name = factor(full_name, # Poner Canarias y España primero
                        levels = c("Canarias", "Spain",
                                   setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
     ggplot(aes(year, y = values)) +
@@ -448,7 +486,7 @@ renderPlotly({
 ```
 
 ### Comparativa países
-```{r}
+```{r ST_paises-input-comparativa-paises}
 selectInput(
         inputId = "paises_seleccion",
         label = "Selecciona países:",
@@ -462,12 +500,12 @@ selectInput(
       )
 ```
 
-```{r}
+```{r ST_paises-comparativa-paises}
 div(renderHighchart({
       req(input$paises_seleccion, input$indicador, input$unidad) # Validar que los inputs no estén vacíos
       
     # 1. Datos de las CCAA (del input)
-      data_paises <- data_series_paises %>%
+      data_paises <- filtrado_series_temporales() %>%
         filter(
           full_name %in% input$paises_seleccion,
           item == input$indicador,
@@ -476,7 +514,7 @@ div(renderHighchart({
         arrange(year)
         
       # 2. Datos de EU27 (siempre)
-      data_eu <- data_series_paises %>%
+      data_eu <- filtrado_series_temporales() %>%
         filter(
           geo == "EU27_2020", 
           item == input$indicador,
@@ -511,14 +549,13 @@ div(renderHighchart({
 
 ```
 
-
 ### Comparativa CCAA
-```{r}
+```{r ST_paises-input-comparativa-ccaa}
 # Selector de comunidades
 selectInput(
         inputId = "ccaa_seleccion",
         label = "Selecciona comunidades:",
-        choices = data_series_paises %>% 
+        choices = data %>% 
             filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
             pull(full_name) %>%
             unique() %>%
@@ -528,13 +565,12 @@ selectInput(
       )
 ```
 
-
-```{r}
+```{r ST_paises-comparativa-ccaa}
 div(renderHighchart({
       req(input$ccaa_seleccion, input$indicador, input$unidad) # Validar que los inputs no estén vacíos
       
     # 1. Datos de las CCAA (del input)
-      data_ccaa <- data_series_paises %>%
+      data_ccaa <- filtrado_series_temporales() %>%
         filter(
           full_name %in% input$ccaa_seleccion, # Asumimos que "Spain" no viene aquí
           item == input$indicador,
@@ -543,7 +579,7 @@ div(renderHighchart({
         arrange(year)
         
       # 2. Datos de España (siempre)
-      data_espana <- data_series_paises %>%
+      data_espana <- filtrado_series_temporales() %>%
         filter(
           full_name == "Spain", 
           item == input$indicador,
@@ -576,6 +612,7 @@ div(renderHighchart({
     })
 )
 ```
+
 
 Mapa coroplético
 ================
