@@ -716,8 +716,61 @@ observe({
 <!-- FUNCIÓN reactive QUE REALIZA EL PROCESADO DE LA TABLA PARA ESTA PÁGINA --> 
 
 ```{r}
-inputs.processing.mapa <- reactive({
+inputs.processing.mapa0 <- reactive({
   tb <- geoj0.tb %>% 
+    left_join(
+      data %>%
+        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
+      join_by("NUTS_ID"=="geo")
+    ) %>% 
+    mutate(full_name = coalesce(full_name, NAME_LATN),
+           # crear etiqueta legible combinando indicador y unidad
+            indicador_unidad = paste(
+            names(indicadores_labels)[match(item, indicadores_labels)],  # nombre legible del indicador
+            "-",
+            names(unidad_labels)[match(unit, unidad_labels)]             # nombre legible de la unidad
+          )
+    ) %>% 
+    # Rellenar NA en indicador_unidad usando los valores existentes por item+unit
+    mutate(
+      indicador_unidad = if_else(
+        indicador_unidad == "NA - NA",
+        first(na.omit(indicador_unidad)),  # toma el primer valor no NA del grupo
+        indicador_unidad
+      )
+    )
+  
+  return(tb)
+})
+inputs.processing.mapa1 <- reactive({
+  tb <- geoj1.tb %>% 
+    left_join(
+      data %>%
+        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
+      join_by("NUTS_ID"=="geo")
+    ) %>% 
+    mutate(full_name = coalesce(full_name, NAME_LATN),
+           # crear etiqueta legible combinando indicador y unidad
+            indicador_unidad = paste(
+            names(indicadores_labels)[match(item, indicadores_labels)],  # nombre legible del indicador
+            "-",
+            names(unidad_labels)[match(unit, unidad_labels)]             # nombre legible de la unidad
+          )
+    ) %>% 
+    # Rellenar NA en indicador_unidad usando los valores existentes por item+unit
+    mutate(
+      indicador_unidad = if_else(
+        indicador_unidad == "NA - NA",
+        first(na.omit(indicador_unidad)),  # toma el primer valor no NA del grupo
+        indicador_unidad
+      )
+    )
+  
+  return(tb)
+})
+
+inputs.processing.mapa2 <- reactive({
+  tb <- geoj2.tb %>% 
     left_join(
       data %>%
         filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
@@ -744,15 +797,31 @@ inputs.processing.mapa <- reactive({
 })
 ```
 
-
 ### 
+
+```{r}
+# Este reactive "conmuta" los datos según la pestaña activa
+data_para_tabla_sidebar <- reactive({
+  
+  # Requerimos que la pestaña tenga un valor (evita errores al inicio)
+  req(input$pestana_nuts_activa) 
+  
+  # Usamos switch() para seleccionar el conjunto de datos correcto
+  switch(input$pestana_nuts_activa,
+         "NUTS 0" = inputs.processing.mapa0(),
+         "NUTS 1" = inputs.processing.mapa1(),
+         "NUTS 2" = inputs.processing.mapa2()
+  )
+})
+```
+
 
 ```{r}
 # imprimimos la tabla con el atributo seleccionado 
 renderTable({
   
  # capturamos el resultado del procesado de los inputs 
- tb <- inputs.processing.mapa() %>%
+ tb <- data_para_tabla_sidebar() %>%
    arrange(desc(values))%>%  
    select(full_name,values)
   
@@ -770,10 +839,10 @@ renderTable({
 <!-- CREAMOS UNA NUEVA COLUMNA DONDE POR PESTAÑAS PONEMOS UN MAPA COROPLÉTICO Y UN 
      DIAGRAMA DE BARRAS -->
 
-Column {.tabset}
+Column {.tabset data-id="pestana_nuts_activa"}
 --------------------------------------------------
 
-### Mapa Coroplético
+### NUTS 0 {.active}
 
 ```{verbatim}
 renderTable({
@@ -787,7 +856,7 @@ renderTable({
 # dibujamos el mapa coroplético
 leaflet::renderLeaflet({
  # capturamos el resultado del procesado de los inputs 
- tb <- inputs.processing.mapa()
+ tb <- inputs.processing.mapa0()
 
 etiquetas <-paste(
     "<strong> ",tb$full_name ,
@@ -800,3 +869,44 @@ etiquetas <-paste(
  MapaCoroplético(geoj0,tb$values,etiquetas,"Valor")
 })
 ```
+
+### NUTS 1
+
+```{r}
+# dibujamos el mapa coroplético
+leaflet::renderLeaflet({
+ # capturamos el resultado del procesado de los inputs 
+ tb <- inputs.processing.mapa1()
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>",tb$indicador_unidad,
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+ # dibujamos el mapa 
+ MapaCoroplético(geoj1,tb$values,etiquetas,"Valor")
+})
+```
+
+### NUTS 2
+
+```{r}
+# dibujamos el mapa coroplético
+leaflet::renderLeaflet({
+ # capturamos el resultado del procesado de los inputs 
+ tb <- inputs.processing.mapa2()
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>",tb$indicador_unidad,
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+ # dibujamos el mapa 
+ MapaCoroplético(geoj2,tb$values,etiquetas,"Valor")
+})
+```
+
