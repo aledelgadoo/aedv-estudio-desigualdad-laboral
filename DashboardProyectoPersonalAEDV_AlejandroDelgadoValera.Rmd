@@ -96,10 +96,19 @@ MapaCoroplético <- function(
  region_labels, # vector de etiquetas para los desplegables
  legend_title # título de la leyenda 
 ){
-pal <- colorQuantile("YlOrRd", value, n = 9)
+
+vals <- value[!is.na(value)]
+breaks <- unique(pretty(vals))
+
+pal <- colorBin(
+  palette = "YlOrRd",
+  domain  = vals,
+  bins    = breaks
+)
+
 p <-  geoj %>%
     leaflet() %>%  
-    #setView(lng = 25, lat = 22, zoom = 2)  %>% 
+    setView(lng = 10, lat = 48, zoom = 4)  %>% 
     addPolygons(
       fillColor = ~pal(value), 
       weight = 2,
@@ -233,7 +242,7 @@ geoj2.tb <- geoj2 %>%
 ```
 
 
-Series temporales
+Series temporales (por países)
 =================
 ```{r ST_paises-analisis-data}
 filtrado_series_temporales <- reactive({
@@ -617,3 +626,177 @@ div(renderHighchart({
 
 Mapa coroplético
 ================
+
+Column {.sidebar data-width=270}
+--------------------------------------------------
+
+```{r}
+# Widgets para selección de parámetros 
+selectInput(
+    "indicador_mapa",
+    label = "Indicador:",
+    choices = indicadores_labels,
+    selected = "Coste laboral medio / persona"
+)
+
+selectInput(
+    "unidad_mapa",
+    label = "Unidad:",
+    choices = unidad_labels,
+    selected = "EUR"
+)
+
+selectInput(
+    "sector_mapa",
+    label = "Sector:",
+    choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))), # Total primero
+    selected = "Total actividades"           
+)
+
+# selectInput(
+#     "nuts_mapa",
+#     label = "NUTS: ",
+#     choices = 0:2,
+#     selected = 0
+# )
+
+selectInput(
+    "year_mapa", 
+    label = "Año:",
+    choices = sort(unique(data$year), decreasing = TRUE) , 
+    selected = 2023
+)
+
+# --- Para que no se puedan seleccionar unidades que no existen ---
+observe({
+    req(input$indicador_mapa) # Confirmamos que haya algo seleccionado
+    
+    # obtén el código del indicador seleccionado (por ejemplo "D1_SAL_HW")
+    indicador_sel <- input$indicador_mapa
+    
+    # busca las unidades válidas para ese indicador
+    unidades_validas <- indicador_unidades[[indicador_sel]]
+    
+    # filtra tus etiquetas de unidades (para mostrar solo las disponibles)
+    unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
+    
+    # actualiza el selector de unidad con esas opciones
+    updateSelectInput(
+        inputId = "unidad_mapa",
+        choices = unidades_filtradas,
+        selected = unidades_filtradas[1]
+    )
+})
+
+# --- Para que no se puedan seleccionar sectores que no existen ---
+observe({
+    req(input$indicador_mapa, input$unidad_mapa) # Confirmamos que haya algo seleccionado
+    
+    # Filtramos los datos disponibles con los inputs actuales
+    sectores_disponibles <- data %>%
+        filter(
+            item == input$indicador_mapa,
+            unit == input$unidad_mapa
+        ) %>%
+        pull(sector_name) %>%
+        unique() %>%
+        sort()
+
+    # Actualizamos las opciones del selector de sector
+    updateSelectInput(
+        inputId = "sector_mapa",
+        choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
+        selected = "Total actividades"
+      )
+})
+```
+
+
+
+<!-- FUNCIÓN reactive QUE REALIZA EL PROCESADO DE LA TABLA PARA ESTA PÁGINA --> 
+
+```{r}
+inputs.processing.mapa <- reactive({
+  tb <- geoj0.tb %>% 
+    left_join(
+      data %>%
+        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
+      join_by("NUTS_ID"=="geo")
+    ) %>% 
+    mutate(full_name = coalesce(full_name, NAME_LATN),
+           # crear etiqueta legible combinando indicador y unidad
+            indicador_unidad = paste(
+            names(indicadores_labels)[match(item, indicadores_labels)],  # nombre legible del indicador
+            "-",
+            names(unidad_labels)[match(unit, unidad_labels)]             # nombre legible de la unidad
+          )
+    ) %>% 
+    # Rellenar NA en indicador_unidad usando los valores existentes por item+unit
+    mutate(
+      indicador_unidad = if_else(
+        indicador_unidad == "NA - NA",
+        first(na.omit(indicador_unidad)),  # toma el primer valor no NA del grupo
+        indicador_unidad
+      )
+    )
+  
+  return(tb)
+})
+```
+
+
+### 
+
+```{r}
+# imprimimos la tabla con el atributo seleccionado 
+renderTable({
+  
+ # capturamos el resultado del procesado de los inputs 
+ tb <- inputs.processing.mapa() %>%
+   arrange(desc(values))%>%  
+   select(full_name,values)
+  
+ tb %>% 
+ mutate(value=prettyNum(round(values,
+  digits=max(5-nchar(as.character(round(max(na.omit(values))))),0)),
+  big.mark = ",")) %>% 
+     select(full_name, value)
+ 
+})
+```
+
+
+
+<!-- CREAMOS UNA NUEVA COLUMNA DONDE POR PESTAÑAS PONEMOS UN MAPA COROPLÉTICO Y UN 
+     DIAGRAMA DE BARRAS -->
+
+Column {.tabset}
+--------------------------------------------------
+
+### Mapa Coroplético
+
+```{verbatim}
+renderTable({
+    tb <- inputs.processing.mapa()
+    tb
+})
+```
+
+
+```{r}
+# dibujamos el mapa coroplético
+leaflet::renderLeaflet({
+ # capturamos el resultado del procesado de los inputs 
+ tb <- inputs.processing.mapa()
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>",tb$indicador_unidad,
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+ # dibujamos el mapa 
+ MapaCoroplético(geoj0,tb$values,etiquetas,"Valor")
+})
+```
