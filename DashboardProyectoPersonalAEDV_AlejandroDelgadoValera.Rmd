@@ -282,7 +282,7 @@ div(
   
     # - Indicador -
     div(
-        selectInput(
+        pickerInput(
             "indicador",
             label = "Indicador:",
             choices = indicadores_labels,
@@ -292,7 +292,7 @@ div(
   
     # - Unidad -
     div(
-        selectInput(
+        pickerInput(
             "unidad",
             label = "Unidad:",
             choices = unidad_labels,
@@ -302,7 +302,7 @@ div(
   
    # - Sector -
     div(
-        selectInput(
+        pickerInput(
             inputId = "sector",
             label = "Sector:",
             choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))),
@@ -316,7 +316,7 @@ div(
         condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa países'",
     
         div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-            selectInput(
+            pickerInput(
                 inputId = "paises_seleccion",
                 label = "Selecciona países:",
                 choices = data %>% 
@@ -336,7 +336,7 @@ div(
         condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa CCAA'",
     
         div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-            selectInput(
+            pickerInput(
                 inputId = "ccaa_seleccion",
                 label = "Selecciona comunidades:",
                 choices = data %>% 
@@ -366,7 +366,7 @@ observe({
     unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
     
     # actualiza el selector de unidad con esas opciones
-    updateSelectInput(
+    updatePickerInput(
         inputId = "unidad",
         choices = unidades_filtradas,
         selected = unidades_filtradas[1]
@@ -388,7 +388,7 @@ observe({
         sort()
 
     # Actualizamos las opciones del selector de sector
-    updateSelectInput(
+    updatePickerInput(
         inputId = "sector",
         choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
         selected = "Total actividades"
@@ -498,17 +498,22 @@ renderPlotly({
 
 ### Comparativa países
 ```{r ST_paises-input-comparativa-paises}
-selectInput(
-        inputId = "paises_seleccion",
-        label = "Selecciona países:",
-        choices = data %>% 
-            filter(NUTS==0) %>% 
-            pull(full_name) %>%
-            unique() %>%
-            sort(),
-        multiple = TRUE,
-        selected = "Spain"
-      )
+pickerInput(
+    inputId = "paises_seleccion",
+    label = "Selecciona países:",
+    choices = data %>% 
+        filter(NUTS==0) %>% 
+        pull(full_name) %>%
+        unique() %>%
+        sort(),
+    multiple = TRUE,
+    selected = "Spain",
+    options = pickerOptions(
+        actionsBox = TRUE,
+        liveSearch = TRUE,
+        noneSelectedText = "Ningún país seleccionado" # Texto que se muestra cuando está vacío
+    )
+)
 ```
 
 ```{r ST_paises-comparativa-paises}
@@ -563,17 +568,22 @@ div(renderHighchart({
 ### Comparativa CCAA
 ```{r ST_paises-input-comparativa-ccaa}
 # Selector de comunidades
-selectInput(
-        inputId = "ccaa_seleccion",
-        label = "Selecciona comunidades:",
-        choices = data %>% 
-            filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
-            pull(full_name) %>%
-            unique() %>%
-            sort(),
-        multiple = TRUE,
-        selected = "Canarias"
-      )
+pickerInput(
+    inputId = "ccaa_seleccion",
+    label = "Selecciona comunidades:",
+    choices = data %>% 
+        filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
+        pull(full_name) %>%
+        unique() %>%
+        sort(),
+    multiple = TRUE,
+    selected = "Canarias",
+    options = pickerOptions(
+        actionsBox = TRUE,
+        liveSearch = TRUE,
+        noneSelectedText = "Ninguna CCAA seleccionada" # Texto que se muestra cuando está vacío
+    )
+)
 ```
 
 ```{r ST_paises-comparativa-ccaa}
@@ -631,7 +641,7 @@ Mapa coroplético
 Column {.sidebar data-width=270}
 --------------------------------------------------
 
-```{r}
+```{r widgets-mapa}
 # Widgets para selección de parámetros 
 pickerInput(
     "indicador_mapa",
@@ -789,9 +799,9 @@ observe({
 })
 ```
 
-<!-- Funciones reactive --> 
+<!-- Funciones reactive (NO MUESTRA NADA) --> 
 
-```{r}
+```{r funciones-mapa}
 inputs.processing.mapa0 <- reactive({
     etiqueta_valida <- paste(
         names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
@@ -856,7 +866,7 @@ inputs.processing.mapa2 <- reactive({
 ### 
 
 <!--Tabla-->
-```{r}
+```{r tabla-mapa}
 # imprimimos la tabla con el atributo seleccionado 
 renderTable({
   tb <- switch (input$nuts_mapa,
@@ -878,24 +888,12 @@ renderTable({
 ```
 
 
-
-<!-- CREAMOS UNA NUEVA COLUMNA DONDE POR PESTAÑAS PONEMOS UN MAPA COROPLÉTICO Y UN 
-     DIAGRAMA DE BARRAS -->
-
 Column {.tabset}
 --------------------------------------------------
 
 ### Mapa coroplético
 
-```{verbatim}
-renderTable({
-    tb <- inputs.processing.mapa()
-    tb
-})
-```
-
-
-```{r}
+```{r renderizado-mapa}
 # dibujamos el mapa coroplético
 leaflet::renderLeaflet({
     # capturamos el resultado del procesado de los inputs 
