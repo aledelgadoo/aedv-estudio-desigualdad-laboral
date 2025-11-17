@@ -19,6 +19,7 @@ library(geojsonio)
 library(plotly)
 library(ggplot2)
 library(tidyverse)
+library(shinyWidgets)
 pdf(file = NULL) # evita errores en shiny 
 
 # asociamos funciones a determinadas librerías para evitar posibles errores 
@@ -110,19 +111,19 @@ p <-  geoj %>%
     leaflet() %>%  
     setView(lng = 10, lat = 48, zoom = 4)  %>% 
     addPolygons(
-      fillColor = ~pal(value), 
-      weight = 2,
-      opacity = 1,
-      color = "white",
-      dashArray = "3",
-      fillOpacity = 0.7,
-      highlightOptions = highlightOptions( 
-        weight = 2,
-        color = rgb(0.2,0.2,0.2),
+        fillColor = ~pal(value),
+        weight = 1,
+        opacity = 1,
+        color = "#555555",
         dashArray = "",
-        fillOpacity = 0.7,
-        bringToFront = TRUE
-      ),
+        fillOpacity = 0.75,
+        highlightOptions = highlightOptions(
+            weight = 3,
+            color = "#333333",
+            dashArray = "",
+            fillOpacity = 0.8,
+            bringToFront = TRUE
+        ),
       label = region_labels 
     ) %>% 
     addLegend("bottomleft", 
@@ -632,40 +633,62 @@ Column {.sidebar data-width=270}
 
 ```{r}
 # Widgets para selección de parámetros 
-selectInput(
+pickerInput(
     "indicador_mapa",
     label = "Indicador:",
     choices = indicadores_labels,
     selected = "Coste laboral medio / persona"
 )
 
-selectInput(
+pickerInput(
     "unidad_mapa",
     label = "Unidad:",
     choices = unidad_labels,
     selected = "EUR"
 )
 
-selectInput(
+pickerInput(
     "sector_mapa",
     label = "Sector:",
     choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))), # Total primero
     selected = "Total actividades"           
 )
 
-# selectInput(
-#     "nuts_mapa",
-#     label = "NUTS: ",
-#     choices = 0:2,
-#     selected = 0
-# )
-
-selectInput(
+pickerInput(
     "year_mapa", 
     label = "Año:",
     choices = sort(unique(data$year), decreasing = TRUE) , 
     selected = 2023
 )
+
+shinyWidgets::radioGroupButtons(
+  inputId = "nuts_mapa",
+  label = "NUTS:",
+  choices = 0:2,
+  selected = 0,
+  justified = TRUE
+)
+
+opciones_mapa <- data %>%
+    filter(NUTS == 0) %>%
+    select(full_name, geo) %>% 
+    distinct() %>%
+    arrange(full_name) %>%
+    tibble::deframe()
+
+pickerInput(
+    inputId = "seleccion_mapa",
+    label = "Selecciona país(es):",
+    choices = opciones_mapa,
+    selected = NULL,      # <-- Perfecto, empieza vacío
+    multiple = TRUE,      # <-- La clave 1: permite selección múltiple
+    options = pickerOptions(
+        actionsBox = TRUE,
+        liveSearch = TRUE,
+        noneSelectedText = "Ningún país seleccionado" # Texto que se muestra cuando está vacío
+  )
+)
+
 
 # --- Para que no se puedan seleccionar unidades que no existen ---
 observe({
@@ -681,7 +704,7 @@ observe({
     unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
     
     # actualiza el selector de unidad con esas opciones
-    updateSelectInput(
+    updatePickerInput(
         inputId = "unidad_mapa",
         choices = unidades_filtradas,
         selected = unidades_filtradas[1]
@@ -703,94 +726,127 @@ observe({
         sort()
 
     # Actualizamos las opciones del selector de sector
-    updateSelectInput(
+    updatePickerInput(
         inputId = "sector_mapa",
         choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
         selected = "Total actividades"
       )
 })
+
+observe({
+  # 1. Esperamos a tener todos los inputs necesarios
+  req(
+    input$indicador_mapa,
+    input$unidad_mapa,
+    input$sector_mapa,
+    input$year_mapa
+  )
+  
+  # 2. Filtramos 'data' para encontrar qué países (NUTS 0)
+  #    tienen observaciones (values) NO nulas
+  #    para la combinación de filtros actual.
+  
+  paises_con_datos <- data %>%
+    filter(
+      item == input$indicador_mapa,
+      unit == input$unidad_mapa,
+      sector_name == input$sector_mapa,
+      year == input$year_mapa,
+      NUTS == 0,           # Filtramos solo por países
+      !is.na(values)       # ¡La clave! Solo los que tienen datos
+    ) %>%
+    select(full_name, geo) %>% # Seleccionamos el nombre y el ID
+    distinct() %>%
+    arrange(full_name)
+  
+  # 3. Creamos el vector nombrado ("Nombre" = "ID")
+  opciones_disponibles <- tibble::deframe(paises_con_datos)
+  
+  # 4. (Opcional pero recomendado) Mantenemos la selección actual
+  #    si los países seleccionados siguen estando en la nueva lista.
+  
+  # Guardamos la selección actual
+  seleccion_actual <- isolate(input$seleccion_mapa)
+  
+  # Vemos cuáles de los seleccionados siguen siendo válidos
+  # Usamos 'opciones_disponibles' (el vector nombrado) para 
+  # comprobar contra los 'valores' (los códigos "geo")
+  nueva_seleccion <- intersect(seleccion_actual, opciones_disponibles)
+  
+  # Si la intersección da un vector vacío, lo ponemos como NULL
+  # para que el pickerInput muestre "Ningún país seleccionado"
+  if (length(nueva_seleccion) == 0) {
+    nueva_seleccion <- NULL
+  }
+
+  # 5. Actualizamos el pickerInput
+  updatePickerInput(
+    inputId = "seleccion_mapa",
+    choices = opciones_disponibles,
+    selected = nueva_seleccion # Usamos la selección preservada
+  )
+  
+})
 ```
 
-
-
-<!-- FUNCIÓN reactive QUE REALIZA EL PROCESADO DE LA TABLA PARA ESTA PÁGINA --> 
+<!-- Funciones reactive --> 
 
 ```{r}
 inputs.processing.mapa0 <- reactive({
+    etiqueta_valida <- paste(
+        names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
+        "-",
+        names(unidad_labels)[match(input$unidad_mapa, unidad_labels)]
+    )
+    
   tb <- geoj0.tb %>% 
     left_join(
       data %>%
-        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
+        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa, NUTS=="0", is.null(input$seleccion_mapa) | (geo %in% input$seleccion_mapa)),
       join_by("NUTS_ID"=="geo")
     ) %>% 
     mutate(full_name = coalesce(full_name, NAME_LATN),
            # crear etiqueta legible combinando indicador y unidad
-            indicador_unidad = paste(
-            names(indicadores_labels)[match(item, indicadores_labels)],  # nombre legible del indicador
-            "-",
-            names(unidad_labels)[match(unit, unidad_labels)]             # nombre legible de la unidad
-          )
-    ) %>% 
-    # Rellenar NA en indicador_unidad usando los valores existentes por item+unit
-    mutate(
-      indicador_unidad = if_else(
-        indicador_unidad == "NA - NA",
-        first(na.omit(indicador_unidad)),  # toma el primer valor no NA del grupo
-        indicador_unidad
-      )
+            indicador_unidad = etiqueta_valida
     )
   
   return(tb)
 })
 inputs.processing.mapa1 <- reactive({
+    etiqueta_valida <- paste(
+        names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
+        "-",
+        names(unidad_labels)[match(input$unidad_mapa, unidad_labels)]
+    )
+        
   tb <- geoj1.tb %>% 
     left_join(
       data %>%
-        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
+        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa, NUTS=="1",is.null(input$seleccion_mapa) | (substr(geo, 1, 2) %in% input$seleccion_mapa)),
       join_by("NUTS_ID"=="geo")
     ) %>% 
     mutate(full_name = coalesce(full_name, NAME_LATN),
            # crear etiqueta legible combinando indicador y unidad
-            indicador_unidad = paste(
-            names(indicadores_labels)[match(item, indicadores_labels)],  # nombre legible del indicador
-            "-",
-            names(unidad_labels)[match(unit, unidad_labels)]             # nombre legible de la unidad
-          )
-    ) %>% 
-    # Rellenar NA en indicador_unidad usando los valores existentes por item+unit
-    mutate(
-      indicador_unidad = if_else(
-        indicador_unidad == "NA - NA",
-        first(na.omit(indicador_unidad)),  # toma el primer valor no NA del grupo
-        indicador_unidad
-      )
+            indicador_unidad = etiqueta_valida
     )
-  
   return(tb)
 })
 
 inputs.processing.mapa2 <- reactive({
-  tb <- geoj2.tb %>% 
-    left_join(
-      data %>%
-        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa),
+    etiqueta_valida <- paste(
+        names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
+        "-",
+        names(unidad_labels)[match(input$unidad_mapa, unidad_labels)]
+    )
+    tb <- geoj2.tb %>% 
+        left_join(
+        data %>%
+        filter(year==input$year_mapa, item==input$indicador_mapa, unit==input$unidad_mapa, sector_name==input$sector_mapa, NUTS=="2", is.null(input$seleccion_mapa) | (substr(geo, 1, 2) %in% input$seleccion_mapa)),
       join_by("NUTS_ID"=="geo")
     ) %>% 
     mutate(full_name = coalesce(full_name, NAME_LATN),
            # crear etiqueta legible combinando indicador y unidad
-            indicador_unidad = paste(
-            names(indicadores_labels)[match(item, indicadores_labels)],  # nombre legible del indicador
-            "-",
-            names(unidad_labels)[match(unit, unidad_labels)]             # nombre legible de la unidad
-          )
-    ) %>% 
-    # Rellenar NA en indicador_unidad usando los valores existentes por item+unit
-    mutate(
-      indicador_unidad = if_else(
-        indicador_unidad == "NA - NA",
-        first(na.omit(indicador_unidad)),  # toma el primer valor no NA del grupo
-        indicador_unidad
-      )
+            indicador_unidad = etiqueta_valida
     )
   
   return(tb)
@@ -799,37 +855,24 @@ inputs.processing.mapa2 <- reactive({
 
 ### 
 
-```{r}
-# Este reactive "conmuta" los datos según la pestaña activa
-data_para_tabla_sidebar <- reactive({
-  
-  # Requerimos que la pestaña tenga un valor (evita errores al inicio)
-  req(input$pestana_nuts_activa) 
-  
-  # Usamos switch() para seleccionar el conjunto de datos correcto
-  switch(input$pestana_nuts_activa,
-         "NUTS 0" = inputs.processing.mapa0(),
-         "NUTS 1" = inputs.processing.mapa1(),
-         "NUTS 2" = inputs.processing.mapa2()
-  )
-})
-```
-
-
+<!--Tabla-->
 ```{r}
 # imprimimos la tabla con el atributo seleccionado 
 renderTable({
-  
- # capturamos el resultado del procesado de los inputs 
- tb <- data_para_tabla_sidebar() %>%
-   arrange(desc(values))%>%  
-   select(full_name,values)
+  tb <- switch (input$nuts_mapa,
+      "0" =  inputs.processing.mapa0(),
+      "1" =  inputs.processing.mapa1(),
+      "2" =  inputs.processing.mapa2()
+  )
   
  tb %>% 
- mutate(value=prettyNum(round(values,
-  digits=max(5-nchar(as.character(round(max(na.omit(values))))),0)),
-  big.mark = ",")) %>% 
-     select(full_name, value)
+    arrange(desc(values))%>%  
+    select(full_name,values) %>% 
+    filter(!is.na(values)) %>% 
+    mutate(Valor=prettyNum(round(values,
+    digits=max(5-nchar(as.character(round(max(na.omit(values))))),0)),
+    big.mark = ",")) %>% 
+    select(Región = full_name, Valor)
  
 })
 ```
@@ -839,10 +882,10 @@ renderTable({
 <!-- CREAMOS UNA NUEVA COLUMNA DONDE POR PESTAÑAS PONEMOS UN MAPA COROPLÉTICO Y UN 
      DIAGRAMA DE BARRAS -->
 
-Column {.tabset data-id="pestana_nuts_activa"}
+Column {.tabset}
 --------------------------------------------------
 
-### NUTS 0 {.active}
+### Mapa coroplético
 
 ```{verbatim}
 renderTable({
@@ -855,8 +898,26 @@ renderTable({
 ```{r}
 # dibujamos el mapa coroplético
 leaflet::renderLeaflet({
- # capturamos el resultado del procesado de los inputs 
- tb <- inputs.processing.mapa0()
+    # capturamos el resultado del procesado de los inputs 
+    res <- switch(
+        as.character(input$nuts_mapa),
+        
+        "0" = list(
+            tb   = inputs.processing.mapa0(),
+            geoj = geoj0
+        ),
+        "1" = list(
+            tb   = inputs.processing.mapa1(),
+            geoj = geoj1
+        ),
+        "2" = list(
+            tb   = inputs.processing.mapa2(),
+            geoj = geoj2
+        )
+    )
+
+tb   <- res$tb
+geoj <- res$geoj
 
 etiquetas <-paste(
     "<strong> ",tb$full_name ,
@@ -866,47 +927,7 @@ etiquetas <-paste(
  lapply(htmltools::HTML)
 
  # dibujamos el mapa 
- MapaCoroplético(geoj0,tb$values,etiquetas,"Valor")
+ MapaCoroplético(geoj,tb$values,etiquetas,"Valor")
+ 
 })
 ```
-
-### NUTS 1
-
-```{r}
-# dibujamos el mapa coroplético
-leaflet::renderLeaflet({
- # capturamos el resultado del procesado de los inputs 
- tb <- inputs.processing.mapa1()
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>",tb$indicador_unidad,
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
- # dibujamos el mapa 
- MapaCoroplético(geoj1,tb$values,etiquetas,"Valor")
-})
-```
-
-### NUTS 2
-
-```{r}
-# dibujamos el mapa coroplético
-leaflet::renderLeaflet({
- # capturamos el resultado del procesado de los inputs 
- tb <- inputs.processing.mapa2()
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>",tb$indicador_unidad,
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
- # dibujamos el mapa 
- MapaCoroplético(geoj2,tb$values,etiquetas,"Valor")
-})
-```
-
