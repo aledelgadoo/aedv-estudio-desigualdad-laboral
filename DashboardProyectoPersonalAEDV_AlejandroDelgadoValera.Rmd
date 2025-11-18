@@ -229,15 +229,14 @@ data <- data_raw %>%
 data
 ```
 ```{r archivos-geoj, results=F}
-geoj0 <- geojson_read("https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_20M_2024_4326_LEVL_0.geojson",  what = "sp")
-geoj0.tb <- geoj0 %>%
-  as_tibble() 
-geoj1 <- geojson_read("https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_20M_2024_4326_LEVL_1.geojson",  what = "sp")
-geoj1.tb <- geoj1 %>%
-  as_tibble() 
-geoj2 <- geojson_read("https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_20M_2024_4326_LEVL_2.geojson",  what = "sp")
-geoj2.tb <- geoj2 %>%
-  as_tibble() 
+# Carga de datos geográficos locales (mucho más rápido)
+geoj0 <- readRDS("data/geoj0.rds")
+geoj1 <- readRDS("data/geoj1.rds")
+geoj2 <- readRDS("data/geoj2.rds")
+
+geoj0.tb <- geoj0 %>% as_tibble()
+geoj1.tb <- geoj1 %>% as_tibble()
+geoj2.tb <- geoj2 %>% as_tibble()
 ```
 
 
@@ -1240,7 +1239,6 @@ renderUI({
 
 Column 
 --------------------------------------------------
-
 
 ### 
 
