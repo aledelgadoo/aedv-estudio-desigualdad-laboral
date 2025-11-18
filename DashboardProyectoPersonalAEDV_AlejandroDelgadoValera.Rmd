@@ -99,12 +99,10 @@ MapaCoroplético <- function(
 ){
 
 vals <- value[!is.na(value)]
-breaks <- unique(pretty(vals))
 
-pal <- colorBin(
+pal <- colorNumeric(
   palette = "YlOrRd",
-  domain  = vals,
-  bins    = breaks
+  domain  = vals
 )
 
 p <-  geoj %>%
@@ -927,5 +925,375 @@ etiquetas <-paste(
  # dibujamos el mapa 
  MapaCoroplético(geoj,tb$values,etiquetas,"Valor")
  
+})
+```
+
+Comparación atributos
+=====================
+
+Predicción ARIMA
+================
+Column {.sidebar data-width=330}
+--------------------------------------------------
+```{r funcion-reactive-arima}
+# --- CÁLCULO COMPARTIDO DEL MODELO ARIMA ---
+calculo_modelo_arima <- reactive({
+  
+  # 1. Validamos inputs
+  req(
+    input$indicador_arima, input$unidad_arima, input$sector_arima,
+    input$region_arima, input$year_arima
+  )
+  
+  # 2. Preparamos los datos
+  df_raw <- data %>%
+    filter(
+      item == input$indicador_arima,
+      unit == input$unidad_arima,
+      sector_name == input$sector_arima,
+      geo == input$region_arima
+    ) %>%
+    select(year, values) %>%
+    filter(!is.na(values))
+
+  # 3. Conversión a tsibble (Serie completa)
+  ts_completa <- df_raw %>%
+    distinct(year, .keep_all = TRUE) %>% 
+    as_tsibble(index = year) %>%
+    fill_gaps() 
+  
+  # 4. Filtro por año de inicio
+  year_start <- input$year_arima
+  if (length(year_start) == 0) return(NULL)
+  
+  datos_modelo <- ts_completa %>%
+    filter(year >= year_start[1]) %>%
+    filter(!is.na(values))
+  
+  # 5. Entrenamos el modelo
+  arima_model <- datos_modelo %>%
+    model(ARIMA(values)) 
+  
+  # --- DEVOLVEMOS UNA LISTA CON TODO LO NECESARIO ---
+  return(list(
+    modelo = arima_model,      # El objeto modelo entrenado
+    datos_usados = datos_modelo, # Los datos recortados usados para el modelo
+    serie_completa = ts_completa # La serie histórica completa (para pintar el contexto)
+  ))
+})
+```
+
+```{r widgets-arima}
+# --- Selectores de parámetros ---
+pickerInput(
+    "indicador_arima",
+    label = "Indicador:",
+    choices = indicadores_labels,
+    selected = "Coste laboral medio / persona"
+)
+
+pickerInput(
+    "unidad_arima",
+    label = "Unidad:",
+    choices = unidad_labels,
+    selected = "EUR"
+)
+
+pickerInput(
+    "sector_arima",
+    label = "Sector:",
+    choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))), # Total primero
+    selected = "Total actividades"           
+)
+
+
+shinyWidgets::radioGroupButtons(
+  inputId = "nuts_arima",
+  label = "NUTS:",
+  choices = 0:2,
+  selected = 0,
+  justified = TRUE
+)
+
+pickerInput(
+    inputId = "region_arima",
+    label = "Selecciona país:",
+    choices = data %>% 
+        filter(NUTS==0) %>% 
+        pull(full_name) %>%
+        unique() %>%
+        sort(),
+    selected = "Spain",
+    options = pickerOptions(
+        liveSearch = TRUE,
+    )
+)
+
+noUiSliderInput(
+    inputId = "year_arima",
+    label = "Año de inicio datos:",
+    min = 2000, # Valor temporal
+    max = 2023, # Valor temporal
+    value = 2000,
+    step = 1,
+    # color = "#007bff", # Opcional: color azulito
+    format = wNumbFormat(decimals = 0) # Para que no salgan decimales (2010.00)
+)
+
+shinyWidgets::radioGroupButtons(
+   inputId = "h_arima", # 'h' es la letra típica para el horizonte de predicción
+   label = "Años a predecir:",
+   choices = 1:5,
+   selected = 5,    # Por defecto 5 años
+   justified = TRUE
+)
+
+# --- Para que no se puedan seleccionar unidades que no existen ---
+observe({
+    req(input$indicador_arima) # Confirmamos que haya algo seleccionado
+    
+    # obtén el código del indicador seleccionado (por ejemplo "D1_SAL_HW")
+    indicador_sel <- input$indicador_arima
+    
+    # busca las unidades válidas para ese indicador
+    unidades_validas <- indicador_unidades[[indicador_sel]]
+    
+    # filtra tus etiquetas de unidades (para mostrar solo las disponibles)
+    unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
+    
+    # actualiza el selector de unidad con esas opciones
+    updatePickerInput(
+        inputId = "unidad_arima",
+        choices = unidades_filtradas,
+        selected = unidades_filtradas[1]
+    )
+})
+
+# --- Para que no se puedan seleccionar sectores que no existen ---
+observe({
+    req(input$indicador_arima, input$unidad_arima) # Confirmamos que haya algo seleccionado
+    
+    # Filtramos los datos disponibles con los inputs actuales
+    sectores_disponibles <- data %>%
+        filter(
+            item == input$indicador_arima,
+            unit == input$unidad_arima
+        ) %>%
+        pull(sector_name) %>%
+        unique() %>%
+        sort()
+
+    # Actualizamos las opciones del selector de sector
+    updatePickerInput(
+        inputId = "sector_arima",
+        choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
+        selected = "Total actividades"
+      )
+})
+
+# --- Para seleccionar solo regiones disponibles ---
+observe({
+  # 1. Esperamos a que todos los filtros estén listos
+  req(
+    input$indicador_arima, 
+    input$unidad_arima, 
+    input$sector_arima, 
+    input$nuts_arima
+  )
+
+  # 2. Definimos a quién queremos priorizar según el NUTS
+  #    (Asegúrate de que el texto coincida con cómo viene en tus datos: "Spain" o "España")
+  prioridad <- if (input$nuts_arima == "0") "Spain" else "Canarias"
+
+  # 3. Filtramos y ORDENAMOS con la nueva lógica
+  regiones_disponibles <- data %>%
+    filter(
+      item == input$indicador_arima,
+      unit == input$unidad_arima,
+      sector_name == input$sector_arima,
+      NUTS == input$nuts_arima, 
+      !is.na(values)
+    ) %>%
+    select(full_name, geo) %>%
+    distinct() %>%
+    # --- AQUÍ ESTÁ EL TRUCO ---
+    # Creamos una columna temporal (TRUE si es el prioritario, FALSE si no)
+    mutate(es_prioritario = grepl(prioridad, full_name, ignore.case = TRUE)) %>%
+    # Ordenamos: Primero los TRUE (desc), luego alfabéticamente por nombre
+    arrange(desc(es_prioritario), full_name) %>%
+    # --------------------------
+    select(full_name, geo) # Nos quedamos solo con lo que necesitamos
+  
+  # 4. Convertimos a vector nombrado
+  choices_vector <- tibble::deframe(regiones_disponibles)
+  
+  # 5. Lógica de selección (se mantiene igual)
+  seleccion_actual <- isolate(input$paises_arima)
+  
+  if (!is.null(seleccion_actual) && seleccion_actual %in% choices_vector) {
+    nueva_seleccion <- seleccion_actual 
+  } else {
+    # Como hemos ordenado "Spain"/"Canarias" al principio, 
+    # choices_vector[1] seleccionará automáticamente tu prioridad 
+    # si la selección anterior no es válida.
+    if (length(choices_vector) > 0) {
+      nueva_seleccion <- choices_vector[1] 
+    } else {
+      nueva_seleccion <- NULL
+    }
+  }
+  
+  label_texto <- if (input$nuts_arima == "0") "Selecciona país:" else "Selecciona región:"
+
+  # 6. Actualizamos
+  updatePickerInput(
+    session = session,
+    inputId = "region_arima",
+    label = label_texto,
+    choices = choices_vector,
+    selected = nueva_seleccion
+  )
+})
+
+# --- Para actualizar el año inicial con los años disponibles ---
+observe({
+  # 1. Esperamos a tener el país/región seleccionado (y el resto de filtros)
+  req(
+    input$indicador_arima,
+    input$unidad_arima,
+    input$sector_arima,
+    input$region_arima
+  )
+
+  # 2. Obtenemos los años disponibles para esa combinación exacta
+  años_disponibles <- data %>%
+    filter(
+      item == input$indicador_arima,
+      unit == input$unidad_arima,
+      sector_name == input$sector_arima,
+      # Aquí usamos el ID (geo) que devuelve el pickerInput
+      geo == input$region_arima, 
+      !is.na(values)
+    ) %>%
+    pull(year) %>%
+    unique()
+
+  # 3. Calculamos min y max (con seguridad por si no hay datos)
+  if (length(años_disponibles) > 0) {
+    min_year <- min(años_disponibles)
+    max_year <- max(años_disponibles)
+  } else {
+    # Valores por defecto de seguridad si falla la data
+    min_year <- 2000 
+    max_year <- 2023
+  }
+
+  # 4. Actualizamos el slider
+  #    Importante: Actualizamos el 'range' (topes) y el 'value' (selección)
+  updateNoUiSliderInput(
+    session = session,
+    inputId = "year_arima",
+    range = c(min_year, max_year), # Nuevos límites
+    value = min_year               # Reseteamos al inicio de los datos
+  )
+  
+})
+```
+
+```{r metricas-arima}
+# --- MÉTRICAS DEL MODELO (SIDEBAR) ---
+renderUI({
+  
+  # 1. Traemos el modelo
+  resultado <- calculo_modelo_arima()
+  req(resultado)
+  
+  # 2. Calculamos RMSE
+  datos_con_residuos <- augment(resultado$modelo)
+  rmse_val <- sqrt(mean(datos_con_residuos$.resid^2, na.rm = TRUE))
+  
+  # 3. Extraemos el nombre del modelo (ej: ARIMA(0,1,0))
+  #    Cogemos la última columna del objeto mable que contiene el modelo
+  columna_modelo <- length(resultado$modelo)
+  nombre_modelo <- format(resultado$modelo[[columna_modelo]])
+  
+  # 4. Renderizamos (Estructura limpia)
+  tagList(
+    
+    # Caja RMSE
+    div(class = "box-metricas",
+        h4("RMSE"),
+        h2(prettyNum(round(rmse_val, 2), big.mark = ","))
+    ),
+    
+    # Caja Modelo
+    div(class = "box-metricas",
+        h4("Modelo Seleccionado"),
+        h3(nombre_modelo)
+    )
+  )
+})
+```
+
+
+<!-- Columna para las gráficas --> 
+
+Column 
+--------------------------------------------------
+
+
+### 
+
+```{r predicion-arima} 
+renderPlotly({
+  
+  # 1. Llamamos al reactive compartido
+  #    Esto valida inputs y calcula el modelo (o recupera el cálculo si ya está hecho)
+  resultado <- calculo_modelo_arima()
+  
+  # 2. Calculamos la predicción (Esto es rápido)
+  req(input$h_arima)
+  h_val <- as.numeric(input$h_arima)
+  
+  forecast_pred <- resultado$modelo %>%
+    forecast(h = h_val)
+  
+  # 3. Graficamos
+  #    Usamos 'resultado$serie_completa' para que el gráfico muestre toda la historia
+  GraficoDinamicoArima95CI(
+    resultado$serie_completa,   
+    "year",              
+    "values",            
+    forecast_pred,       
+    input$region_arima   
+  )
+})
+```
+
+### 
+
+```{r comparacion-arima} 
+renderPlotly({
+  
+  # 1. Llamamos al mismo reactive compartido
+  resultado <- calculo_modelo_arima()
+  
+  # 2. Extraemos los valores ajustados (.fitted)
+  datos_ajustados <- augment(resultado$modelo)
+  
+  # 3. Graficamos con ggplot
+  p <- ggplot(datos_ajustados, aes(x = year)) +
+    geom_line(aes(y = values, color = "Real"), size = 0.8) +
+    geom_line(aes(y = .fitted, color = "Ajuste ARIMA"), linetype = "dashed", size = 0.8) +
+    labs(
+      title = paste("Ajuste del modelo -", input$region_arima),
+      y = input$unidad_arima, x = "Año", color = NULL
+    ) +
+    scale_color_manual(values = c("Real" = "black", "Ajuste ARIMA" = "#d9534f")) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+
+  ggplotly(p) %>%
+    layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
 })
 ```
