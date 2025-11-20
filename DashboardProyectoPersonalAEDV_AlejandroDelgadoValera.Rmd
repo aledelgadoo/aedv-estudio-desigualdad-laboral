@@ -186,10 +186,7 @@ p <-  geoj %>%
       labFormat = function(type, cuts, p) {
         n = length(cuts) 
         x = (cuts[-n] + cuts[-1])/2
-        x=prettyNum(round(x,
-            digits=max(5-nchar(as.character(round(max(na.omit(value))))),0)), 
-            big.mark = ","
-        )
+        x = prettyNum(round(x, digits = 0), big.mark = " ")
         as.character(x)
       },
  
@@ -459,6 +456,8 @@ body {
   margin-bottom: 0;
   line-height: 1.1; /* Espacio de línea ajustado */
 }
+
+
 ```
 
 
@@ -925,11 +924,16 @@ selectInput(
     selected = "Total actividades"           
 )
 
-selectInput(
-    "year_mapa", 
-    label = "Año:",
-    choices = sort(unique(data$year), decreasing = TRUE) , 
-    selected = 2023
+
+sliderInput(
+    inputId = "year_mapa",
+    label = "Año de inicio datos:",
+    min = 1995, 
+    max = 2023, 
+    value = 2023,
+    step = 1,
+    sep = "",
+    ticks = FALSE
 )
 
 radioButtons(
@@ -1148,7 +1152,7 @@ renderTable({
 Column {.tabset}
 --------------------------------------------------
 
-### Mapa coroplético
+### Mapa Coroplético
 
 ```{r renderizado-mapa}
 # dibujamos el mapa coroplético
@@ -1577,7 +1581,7 @@ renderPlotly({
 Análisis de atributos
 ========================
 
-```{r}
+```{r widgets-analisis-atributos}
 # Widgets para selección de parámetros 
 # En este caso la sintaxis es especial porque se usa código html para que aparezca en la misma
 # línea el título del widget y la lista desplegable
@@ -1654,7 +1658,7 @@ observe({
 })
 ```
 
-```{r}
+```{r reactive-analisis-atributos}
 # FUNCIÓN REACTIVE QUE FILTRA LOS DATOS EN FUNCIÓN DE input$yearAtr
 # SI ES IGUAL A "mean" SE CALCULA LA MEDIA POR AÑOS. 
 # SI ES IGUAL A UN AÑO SE TOMA EL ÚLTIMO VALOR DISPONIBLE IGUAL O
@@ -1692,13 +1696,12 @@ inputs.processing.analisis.atributos <- reactive(
 ```
 
 
-
 Column {.tabset}
 --------------------------------------------------
 
 ### Atrib. originales
 
-```{r}
+```{r atribOrig-analisis-atributos}
 shiny::renderTable({
   inputs.processing.analisis.atributos()
         
@@ -1707,7 +1710,7 @@ shiny::renderTable({
 
 ### Matriz correl.
 
-```{r}
+```{r matriz-analisis-atributos}
 # DIBUJAMOS LA MATRIZ DE CORRELACIÓN USANDO LA FUNCIÓN plot_correlation INCLUIDA EN "utilidades.R"
 renderPlotly({
   inputs.processing.analisis.atributos() %>%
@@ -1718,10 +1721,9 @@ renderPlotly({
 ```
 
 
-
 ### Atrib. estandarizados 
 
-```{r}
+```{r atribStand-analisis-atributos}
 # IMPRIMIMOS LAS VARIABLES ESTANDARIZADAS (SE LE RESTA LA MEDIA Y 
 # SE DIVIDE POR LA DESVIACIÓN TÍPICA) 
 # PARA QUE FUNCIONE, TODOS LAS COLUMNAS DE LA TABLA DEBEN SER NUMÉRICAS Y 
@@ -1740,10 +1742,9 @@ shiny::renderTable({
 ```
 
 
-
 ### PCs
 
-```{r}
+```{r pca-analisis-atributos}
 # CALCULAMOS COMPONENTES PRINCIPALES CON LA FUNCIÓN prcomp
 # PARA QUE FUNCIONE, TODOS LAS COLUMNAS DE LA TABLA DEBEN SER NUMÉRICAS Y 
 # SIN NA. POR ELLO, PARA QUE LA COLUMNA Territorio CON EL NOMBRE DEL PAÍS 
@@ -1760,7 +1761,7 @@ pca <- reactive(
 ```
 
 
-```{r}
+```{r pcs-analisis-atributos}
 # IMPRIMIMOS LAS COMPONENTES PRINCIPALES. COMO LOS NOMBRES DE LOS PAÍSES
 # NO SE HAN GUARDADO AL CALCULAR pca LOS VOLVEMOS A AÑADIR 
 shiny::renderTable({
@@ -1772,10 +1773,9 @@ shiny::renderTable({
 ```
 
 
-
 ### Pesos combinación lineal PCs
 
-```{r}
+```{r pesos-analisis-atributos}
 # IMPRIMIMOS LOS PESOS (COEFICIENTES) USADOS PARA CALCULAR LOS PC
 # A PARTIR DE LAS VARIABLES ORIGINALES. 
 shiny::renderTable({
@@ -1784,11 +1784,9 @@ shiny::renderTable({
 ```
 
 
-
 ### Varianza explicada
 
-
-```{r} 
+```{r varianza-analisis-atributos} 
 # DIAGRAMA DE BARRAS CON LA VARIANZA EXPLICADA
 # EL Nº DE PC SE PUEDE OBTENER HACIENDO length(pca$sdev)
 renderPlotly({
@@ -1814,8 +1812,7 @@ renderPlotly({
 
 ### Visualización PCs
 
-
-```{r}
+```{r widgetVisualizacion-analisis-atributos}
 # INSERTAMOS LOS SELECTORES PARA ELEGIR LAS PC QUE SE USARÁN EN EL GRÁFICO
 tags$div(
   style = "display:flex; gap:20px; align-items:center; flex-wrap:wrap;",
@@ -1848,7 +1845,7 @@ tags$div(
 )
 ```
 
-```{r} 
+```{r visualizacion-analisis-atributos} 
 ## DIBUJAMOS EL DIAGRAMA DE DISPERSIÓN CON LAS PC SELECCIONADAS
 div(style="width: 100%; height: 100%;",
     highcharter::renderHighchart({
