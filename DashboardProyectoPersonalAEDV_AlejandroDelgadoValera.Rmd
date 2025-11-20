@@ -242,6 +242,42 @@ optimize.yeojohnson.R2 <- function(x, y, lambda_range = c(-1, 1.9)) {
   return(opt$minimum)
 }
 
+# FUNCIÓN PARA DIBUJAR LA MATRIZ DE CORRELACIÓN
+plot_correlation <- function(
+M, # matriz de correlación
+show_values = TRUE # flat para controlar si se imprimen los valores en las celdas
+) {
+  
+  # Texto dentro de la celda (2 decimales)
+  cell_text <- round(M, 2)
+  
+  # Escala personalizada: rojo -> blanco -> azul
+  custom_colors <- list(
+    c(0, "red"),    # mínimo (-1) → azul
+    c(0.5, "white"),# 0 → blanco
+    c(1, "steelblue")    # máximo (+1) → rojo
+  )
+  
+  # Crear heatmap interactivo
+  plot_ly(
+    x = colnames(M),
+    y = rownames(M),
+    z = M,
+    type = "heatmap",
+    colorscale = custom_colors,
+    zmin = -1,
+    zmax = 1,
+    text = if (show_values) cell_text else NULL,
+    texttemplate = if (show_values) "%{text}" else NULL,
+    textfont = list(color = "black"),
+    hovertemplate = "X: %{x}<br>Y: %{y}<br>Correlación: %{z:.4f}<extra></extra>"
+  ) %>%
+    layout(
+      title = "Matriz de correlación interactiva",
+      xaxis = list(title = "", tickangle = 45),
+      yaxis = list(title = "", autorange = "reversed")
+    )
+}
 ```
 ```{r estilo-graficas, include=FALSE}
 # Configuramos el tema sin especificar familia de fuente (usará la estándar)
@@ -1535,4 +1571,290 @@ renderPlotly({
     scale_color_manual(values = c("Real" = "black", "Ajuste ARIMA" = "#d9534f"))
     p
 })
+```
+
+
+Análisis de atributos
+========================
+
+```{r}
+# Widgets para selección de parámetros 
+# En este caso la sintaxis es especial porque se usa código html para que aparezca en la misma
+# línea el título del widget y la lista desplegable
+div(
+    style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
+    # - Año -
+    div(
+        tagList(
+          selectInput(
+        "yearAtr", 
+        label = "Año: ",
+        choices = c("Media",2023:1995), # mean y todos los años descendente
+        selected = "Media",
+        ),
+          helpText("\u00A0", 
+                   style = "font-size: 11px; color: #666; margin-top: -10px;")
+        )   
+    ),    
+    # - Indicador -
+    div(
+        tagList( # Usamos tagList para agrupar el input y el texto
+          selectInput(
+            "indicadorAtr",
+            label = "Indicador:",
+            choices = indicadores_labels[2],
+            selected = "Coste laboral hora trabajada"
+          ),
+          helpText("Nota: Este es el único indicador con datos por sectores.", 
+                   style = "font-size: 11px; color: #666; margin-top: -10px;")
+        )
+    ),
+  
+    # - Unidad -
+    div(
+        tagList(
+        selectInput(
+            "unidadAtr",
+            label = "Unidad:",
+            choices = unidad_labels[1:3],
+            selected = "EUR"
+        ),
+        helpText("\u00A0", 
+                   style = "font-size: 11px; color: #666; margin-top: -10px;")    
+        )
+    ),
+    
+    # - Países - CCAA -
+    div(
+        radioButtons(
+            "pais_ccaa",
+            label = "Ámbito: ",
+            choices = c("Países", "CCAA"),
+            selected = "Países"
+
+        )
+    )
+)
+
+observe({
+  req(input$pais_ccaa)
+  # 1. Definimos el rango según lo seleccionado
+  rango_anos <- if (input$pais_ccaa == "Países") {
+    2023 :1995
+  } else {
+    2023:2000
+  }
+  
+  # 2. Actualizamos el selector de años
+  updateSelectInput(session, "yearAtr",
+    choices = c("Media", sort(rango_anos, decreasing = TRUE)),
+    selected = "Media" # Reseteamos a Media para evitar errores de años no existentes
+  )
+  
+})
+```
+
+```{r}
+# FUNCIÓN REACTIVE QUE FILTRA LOS DATOS EN FUNCIÓN DE input$yearAtr
+# SI ES IGUAL A "mean" SE CALCULA LA MEDIA POR AÑOS. 
+# SI ES IGUAL A UN AÑO SE TOMA EL ÚLTIMO VALOR DISPONIBLE IGUAL O
+# MENOR QUE ESE AÑO. ADEMÁS SE PASAN LOS DATOS POR COLUMNAS
+inputs.processing.analisis.atributos <- reactive( 
+
+  if(input$yearAtr != "Media"){
+    tb <- data %>%
+      filter(year <= input$yearAtr, item==input$indicadorAtr, unit==input$unidadAtr, 
+      (input$pais_ccaa == "Países" & NUTS == 0) | 
+      (input$pais_ccaa == "CCAA" & substr(geo,1,2)=="ES" & NUTS==2)) %>%
+      group_by(Región = full_name, sector_name) %>%
+      summarise(values=last(values)) %>%
+      ungroup() %>%
+      pivot_wider(names_from = sector_name, values_from = values) %>%
+      na.omit()
+  
+    return(tb)
+    
+  } else{
+    tb <- data %>%
+      filter(item==input$indicadorAtr, unit==input$unidadAtr, 
+      (input$pais_ccaa == "Países" & NUTS == 0) | 
+      (input$pais_ccaa == "CCAA" & substr(geo,1,2)=="ES" & NUTS==2))%>% 
+      group_by(Región = full_name, sector_name) %>%
+      summarise(values=mean(values)) %>%
+      ungroup() %>%
+      pivot_wider(names_from = sector_name, values_from = values) %>%
+      na.omit()
+    
+    return(tb)
+  }
+)
+
+```
+
+
+
+Column {.tabset}
+--------------------------------------------------
+
+### Atrib. originales
+
+```{r}
+shiny::renderTable({
+  inputs.processing.analisis.atributos()
+        
+})
+```
+
+### Matriz correl.
+
+```{r}
+# DIBUJAMOS LA MATRIZ DE CORRELACIÓN USANDO LA FUNCIÓN plot_correlation INCLUIDA EN "utilidades.R"
+renderPlotly({
+  inputs.processing.analisis.atributos() %>%
+  select(-Región)  %>% 
+  cor(use = "complete.obs") %>% 
+  plot_correlation(show_values = TRUE) 
+})
+```
+
+
+
+### Atrib. estandarizados 
+
+```{r}
+# IMPRIMIMOS LAS VARIABLES ESTANDARIZADAS (SE LE RESTA LA MEDIA Y 
+# SE DIVIDE POR LA DESVIACIÓN TÍPICA) 
+# PARA QUE FUNCIONE, TODOS LAS COLUMNAS DE LA TABLA DEBEN SER NUMÉRICAS Y 
+# SIN NA. POR ELLO, PARA QUE LA COLUMNA Territorio CON EL NOMBRE DEL PAÍS 
+# NO GENERE ERRORES TENEMOS QUE USAR LA FUNCIÓN column_to_rownames PARA
+# QUE LA USE COMO TÍTULO DE LAS FILAS Y LAS DEJE FUERA DEL CÁLCULO 
+shiny::renderTable({
+  inputs.processing.analisis.atributos() %>% 
+  column_to_rownames(var="Región") %>%
+  scale() %>%
+  as_tibble() %>% 
+  mutate(Región=unique(inputs.processing.analisis.atributos()$Región)) %>%
+  relocate(Región)
+})
+
+```
+
+
+
+### PCs
+
+```{r}
+# CALCULAMOS COMPONENTES PRINCIPALES CON LA FUNCIÓN prcomp
+# PARA QUE FUNCIONE, TODOS LAS COLUMNAS DE LA TABLA DEBEN SER NUMÉRICAS Y 
+# SIN NA. POR ELLO, PARA QUE LA COLUMNA Territorio CON EL NOMBRE DEL PAÍS 
+# NO GENERE ERRORES TENEMOS QUE USAR LA FUNCIÓN column_to_rownames PARA
+# QUE LA USE COMO TÍTULO DE LAS FILAS Y LAS DEJE FUERA DEL CÁLCULO DE LAS PC
+
+pca <- reactive(
+  return(
+    inputs.processing.analisis.atributos() %>%
+    column_to_rownames(var="Región") %>% 
+    prcomp(scale = TRUE)  
+  )
+)
+```
+
+
+```{r}
+# IMPRIMIMOS LAS COMPONENTES PRINCIPALES. COMO LOS NOMBRES DE LOS PAÍSES
+# NO SE HAN GUARDADO AL CALCULAR pca LOS VOLVEMOS A AÑADIR 
+shiny::renderTable({
+  pca()$x %>% as_tibble()  %>% 
+  mutate(Región=unique(inputs.processing.analisis.atributos()$Región)) %>%
+  relocate(Región)
+})
+
+```
+
+
+
+### Pesos combinación lineal PCs
+
+```{r}
+# IMPRIMIMOS LOS PESOS (COEFICIENTES) USADOS PARA CALCULAR LOS PC
+# A PARTIR DE LAS VARIABLES ORIGINALES. 
+shiny::renderTable({
+  as_tibble(pca()$rotation, rownames = "Sector laboral")
+})
+```
+
+
+
+### Varianza explicada
+
+
+```{r} 
+# DIAGRAMA DE BARRAS CON LA VARIANZA EXPLICADA
+# EL Nº DE PC SE PUEDE OBTENER HACIENDO length(pca$sdev)
+renderPlotly({
+  pca <- pca()
+ tibble(
+  label=fct_inorder(paste("PC",1:length(pca$sdev))),
+  varPercent = pca$sdev^2/sum(pca$sdev^2) * 100
+) %>%
+  ggplot(aes(x=label,y=varPercent)) +
+    geom_bar(stat = "identity") +
+    labs(x= "Componentes Principales", 
+          y= "Porcentaje varianza explicada"
+    )+
+   geom_text(aes(label=paste0(round(varPercent,digits = 1),"%")), 
+                 size=3,
+                 colour = "blue",
+                 nudge_y = 1.
+             ) 
+  
+})
+```
+
+
+### Visualización PCs
+
+
+```{r}
+# INSERTAMOS LOS SELECTORES PARA ELEGIR LAS PC QUE SE USARÁN EN EL GRÁFICO
+tags$div(
+  style = "display:flex; gap:20px; align-items:center; flex-wrap:wrap;",
+  tags$div(
+    style="display:flex; align-items:center; gap:6px; min-width:200px;",
+    tags$label("Componente eje x", style="margin-bottom:0; white-space:nowrap;"),
+    shiny::numericInput(
+      "PCx",
+      label = NULL,
+      value=1,
+      min=1,
+      max=11,
+      step=1,
+      width = "80px"
+    )
+  ),
+  tags$div(
+    style="display:flex; align-items:center; gap:6px; min-width:200px;",
+    tags$label("Componente eje y", style="margin-bottom:0; white-space:nowrap;"),
+    shiny::numericInput(
+      "PCy",
+      label = NULL,
+      value=2,
+      min=1,
+      max=11, 
+      step=1,
+      width = "80px"
+    )
+  )
+)
+```
+
+```{r} 
+## DIBUJAMOS EL DIAGRAMA DE DISPERSIÓN CON LAS PC SELECCIONADAS
+div(style="width: 100%; height: 100%;",
+    highcharter::renderHighchart({
+ hchart(pca(),choices=c(input$PCx,input$PCy)) 
+}
+    )
+)
+
 ```
