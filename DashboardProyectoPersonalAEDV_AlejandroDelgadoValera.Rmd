@@ -1,7 +1,11 @@
 ---
 title: "Dashboard - Datos Laborales"
 author: "Alejandro Delgado Valera"
-output: flexdashboard::flex_dashboard
+output: 
+    flexdashboard::flex_dashboard:
+        scrolling: true
+        vertical_layout: fill
+        social: none
 runtime: shiny
 ---
 
@@ -19,7 +23,6 @@ library(geojsonio)
 library(plotly)
 library(ggplot2)
 library(tidyverse)
-library(shinyWidgets)
 pdf(file = NULL) # evita errores en shiny 
 
 # asociamos funciones a determinadas librerías para evitar posibles errores 
@@ -58,37 +61,89 @@ GraficoDinamicoArima95CI <- function(
  date, # string con el nombre se la variable temporal en data
  value, # string con el nombre se la variable numérica en data
  prediccion, # objeto con la predicción usando ARIMA u otro modelo
- TITLE # título del gráfico 
+ TITLE # título del gráfico
 ){
-  
+
   fc <- prediccion %>%
-  mutate(lower = NA) %>% 
-  mutate(upper = NA) 
+  mutate(lower = NA) %>%
+  mutate(upper = NA)
 
   for(k in 1:nrow(fc)){
     fc$lower[k] <- fc$.mean[k] - 1.96*unlist(fc[[value]][k])[2]
     fc$upper[k] <- fc$.mean[k] + 1.96*unlist(fc[[value]][k])[2]
   }
-  
-  data2 <- data 
+
+  data2 <- data
   x <- data2[[date]][1]
   if(!(is.numeric(x) && !inherits(x, "Date") && !inherits(x, "POSIXt"))){
     data2[[date]] <- as.Date(data2[[date]])
     fc[[date]] <- as.Date(fc[[date]])
   }
-  
+
 
 
 p <- plot_ly() %>%
   add_lines(x=data2[[date]], y = data2[[value]], name = "Observación", line = list(color = "black")) %>%
   add_lines(x=fc[[date]], y = fc$.mean, name = "Predicción", line = list(color = "blue")) %>%
-  add_ribbons(x = fc[[date]], ymin = fc$lower, ymax = fc$upper, 
+  add_ribbons(x = fc[[date]], ymin = fc$lower, ymax = fc$upper,
               name = "95% CI", fillcolor = "rgba(0,0,150,0.2)", line = list(width = 0)) %>%
-  layout(title = TITLE)
+  layout(
+      # Fuente Sans (Arial) y color gris oscuro (#333333)
+      font = list(family = "Arial, sans-serif", color = "#333333"),
+      
+      # Fondo blanco puro
+      paper_bgcolor = "#ffffff",
+      plot_bgcolor  = "#ffffff",
+      
+      # Título en negrita
+      title = list(
+        text = paste0("<b>", TITLE, "</b>"), 
+        font = list(size = 25),
+        x = 0.5, 
+        xanchor = "center",
+        yanchor = "top"
+      ),
+      
+      # Eje X: Cuadrícula gris suave (#dee2e6) y sin bordes negros
+      xaxis = list(
+        title = list(text = "<b>Año</b>", font = list(size = 17)), 
+        showgrid = TRUE,
+        gridcolor = "#dee2e6", 
+        zeroline = FALSE,
+        showline = FALSE,
+        tickfont = list(color = "#555555"),
+        range(100, 200)
+      ),
+      
+      # Eje Y: Igual que el X
+      yaxis = list(
+        title = list(text = "<b>Valor</b>", font = list(size = 17)),
+        showgrid = TRUE,
+        gridcolor = "#dee2e6",
+        zeroline = FALSE,
+        showline = FALSE,
+        tickfont = list(color = "#555555")
+      ),
+      
+      # Leyenda arriba (estilo más limpio)
+      legend = list(
+        font = list(weight = "bold", size=15),
+        orientation = "v",   # Vertical
+        x = 1.02,            # Justo fuera del gráfico a la derecha
+        y = 1,               # Alineada arriba
+        xanchor = "left",
+        yanchor = "top",
+        bgcolor = "rgba(0,0,0,0)"
+      ),
+      
+      # Márgenes ajustados
+      margin = list(t = 60, b = 40, l = 20, r = 160)
+    )
 
-return(p) 
+
+
+return(p)
 }
-  
 
 #FUNCIÓN PARA DIBUJAR UN MAPA COROPLÉTICO USANDO leaflet
 MapaCoroplético <- function(
@@ -137,8 +192,9 @@ p <-  geoj %>%
         )
         as.character(x)
       },
+ 
       opacity = 1
-    )
+      )
   return(p)
 }
 
@@ -187,6 +243,188 @@ optimize.yeojohnson.R2 <- function(x, y, lambda_range = c(-1, 1.9)) {
 }
 
 ```
+```{r estilo-graficas, include=FALSE}
+# Configuramos el tema sin especificar familia de fuente (usará la estándar)
+theme_set(
+  theme_minimal() + 
+  theme(
+    # --- TEXTO GENERAL ---
+    # Solo definimos el color gris oscuro para que coincida con tu CSS
+    text = element_text(color = "#333333"),
+    
+    # --- TÍTULOS DE GRÁFICO ---
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5, margin = margin(b = 10)),
+    plot.subtitle = element_text(face = "italic", size = 12, hjust = 0.5, color = "#666666"),
+    
+    # --- EJES ---
+    axis.title = element_text(face = "bold", size = 12),
+    axis.text = element_text(size = 10, color = "#555555"),
+    
+    # --- LEYENDA ---
+    legend.position = "top",
+    legend.title = element_text(face = "bold", size = 11),
+    legend.text = element_text(size = 10),
+    
+    # --- FACETAS (Títulos de las cajitas de países - strip) ---
+    # Esto es clave para que tu gráfica de múltiples países se vea bien
+    strip.text = element_text(face = "bold", size = 11, color = "#333333"),
+    strip.background = element_rect(fill = "#f8f9fa", color = NA), # Fondo gris muy suave para el título
+    
+    # --- FONDO Y CUADRÍCULA (Coincide con el CSS) ---
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "#dee2e6", size = 0.4), # Gris suave
+    panel.grid.minor = element_blank(),
+    plot.margin = margin(15, 15, 15, 15)
+  )
+)
+
+# --- Actualizar textos DENTRO del gráfico (geom_text) ---
+# Quitamos cualquier referencia a familias de fuente aquí también
+update_geom_defaults("text", list(color = "#333333"))
+update_geom_defaults("label", list(color = "#333333"))
+
+```
+```{css, echo=FALSE}
+/* 1. PALETA DE COLORES NEUTRA */
+:root {
+  --main-color: #343a40;        /* Gris Oscuro para Header */
+  --accent-color: #007bff;      /* Azul Estándar (Sólo para Hover/Activo) */
+  --text-color-dark: #333333;   /* Gris Oscuro para Texto Principal y Inputs */
+  --light-bg: #f8f9fa;          /* Fondo muy, muy claro */
+  --sidebar-bg: #ffffff;        /* Fondo Blanco para Sidebar (limpio) */
+  --card-bg: #ffffff;           /* Fondo Blanco para Paneles/Gráficos */
+  --border-color: #dee2e6;       /* Gris muy claro para bordes */
+  --border-radius-soft: 8px;    /* Radio de Borde Suave */
+}
+
+/* 2. ESTILO DEL CUERPO Y FUENTE (Open Sans) */
+body {
+  font-family: 'Open Sans', sans-serif;
+  background-color: var(--light-bg);
+  color: var(--text-color-dark);
+}
+
+/* 3. SIDEBAR Y TÍTULOS DE INPUTS */
+.main-sidebar {
+  background-color: var(--sidebar-bg) !important;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+  border-right: 1px solid var(--border-color);
+}
+
+/* Asegura que los títulos de los inputs sean oscuros */
+.shiny-input-container label, .form-group label {
+  color: var(--text-color-dark) !important;
+  font-weight: 600;
+  padding-bottom: 5px;
+}
+
+/* 4. ENCABEZADO SUPERIOR (HEADER) */
+.navbar {
+  background-color: var(--main-color) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: none;
+}
+
+.navbar-brand, .navbar-nav > li > a {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.navbar-nav > li.active > a,
+.navbar-nav > li.active > a:hover,
+.navbar-nav > li.active > a:focus {
+  background-color: #495057 !important;
+  border-bottom: 3px solid var(--accent-color);
+}
+
+/* 5. CONTROLES/INPUTS (SHINY NATIVOS) - Redondeados, Legibles y Discretos */
+
+/* Aplica a selectInput, numericInput, sliderInput, etc. */
+.form-control {
+  border-radius: var(--border-radius-soft) !important;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  /* Asegura el color de texto para todos los inputs */
+  color: var(--text-color-dark) !important; 
+  background-color: #ffffff !important; /* Fondo siempre blanco para contraste */
+}
+
+/* Estilo para el foco (el resaltado cuando el input está activo) */
+.form-control:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+
+/* Estilo para los botones de las pestañas laterales (e.g., NUTS) */
+.btn-default {
+  border-radius: var(--border-radius-soft);
+  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+}
+
+.btn-default.active {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+}
+
+.btn-default:hover {
+  background-color: #e9ecef;
+}
+
+/* 6. PANELES Y CAJAS (para los gráficos) */
+.box {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius-soft);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05); 
+  padding: 15px; 
+}
+
+/* 7. TÍTULOS DE PANELES */
+.flexdashboard .panel-title {
+  color: var(--text-color-dark); 
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+/* --- ESTILO PARA CAJAS DE MÉTRICAS (RMSE, MODELO) --- */
+.box-metricas {
+  /* Fondo y borde similar al de los inputs/botones */
+  background-color: var(--card-bg); /* Blanco */
+  border: 1px solid var(--border-color); /* Borde gris suave */
+  border-radius: var(--border-radius-soft); /* Bordes redondeados */
+  padding: 10px 15px; /* Espacio interno */
+  margin-bottom: 15px; /* Espacio debajo */
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.03); /* Sombra muy sutil */
+  text-align: left; /* Alineación del texto */
+}
+
+/* Estilo para las etiquetas (RMSE, Modelo Seleccionado) */
+.box-metricas h4 {
+  color: var(--text-color-dark); /* Color de texto oscuro */
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 600; /* Semi-negrita para destacar */
+  font-size: 14px;
+  margin-top: 0;
+  margin-bottom: 5px; /* Espacio debajo de la etiqueta */
+}
+
+/* Estilo para los valores numéricos/modelos */
+.box-metricas h2, .box-metricas h3 {
+  color: var(--main-color); /* Usa el color principal del header (gris oscuro) para el valor */
+  font-family: 'Open Sans', sans-serif;
+  font-weight: 300; /* Negrita */
+  margin-top: 0;
+  font-size: 18px;
+  margin-bottom: 0;
+  line-height: 1.1; /* Espacio de línea ajustado */
+}
+```
+
 
 <!-- Carga inicial de los datos -->
 ```{r analisis-data-raw, results=F}
@@ -279,7 +517,7 @@ div(
   
     # - Indicador -
     div(
-        pickerInput(
+        selectInput(
             "indicador",
             label = "Indicador:",
             choices = indicadores_labels,
@@ -289,7 +527,7 @@ div(
   
     # - Unidad -
     div(
-        pickerInput(
+        selectInput(
             "unidad",
             label = "Unidad:",
             choices = unidad_labels,
@@ -299,7 +537,7 @@ div(
   
    # - Sector -
     div(
-        pickerInput(
+        selectInput(
             inputId = "sector",
             label = "Sector:",
             choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))),
@@ -313,7 +551,7 @@ div(
         condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa países'",
     
         div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-            pickerInput(
+            selectInput(
                 inputId = "paises_seleccion",
                 label = "Selecciona países:",
                 choices = data %>% 
@@ -333,7 +571,7 @@ div(
         condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa CCAA'",
     
         div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-            pickerInput(
+            selectInput(
                 inputId = "ccaa_seleccion",
                 label = "Selecciona comunidades:",
                 choices = data %>% 
@@ -363,7 +601,7 @@ observe({
     unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
     
     # actualiza el selector de unidad con esas opciones
-    updatePickerInput(
+    updateSelectInput(
         inputId = "unidad",
         choices = unidades_filtradas,
         selected = unidades_filtradas[1]
@@ -385,7 +623,7 @@ observe({
         sort()
 
     # Actualizamos las opciones del selector de sector
-    updatePickerInput(
+    updateSelectInput(
         inputId = "sector",
         choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
         selected = "Total actividades"
@@ -495,7 +733,7 @@ renderPlotly({
 
 ### Comparativa países
 ```{r ST_paises-input-comparativa-paises}
-pickerInput(
+selectInput(
     inputId = "paises_seleccion",
     label = "Selecciona países:",
     choices = data %>% 
@@ -505,11 +743,6 @@ pickerInput(
         sort(),
     multiple = TRUE,
     selected = "Spain",
-    options = pickerOptions(
-        actionsBox = TRUE,
-        liveSearch = TRUE,
-        noneSelectedText = "Ningún país seleccionado" # Texto que se muestra cuando está vacío
-    )
 )
 ```
 
@@ -565,7 +798,7 @@ div(renderHighchart({
 ### Comparativa CCAA
 ```{r ST_paises-input-comparativa-ccaa}
 # Selector de comunidades
-pickerInput(
+selectInput(
     inputId = "ccaa_seleccion",
     label = "Selecciona comunidades:",
     choices = data %>% 
@@ -575,11 +808,6 @@ pickerInput(
         sort(),
     multiple = TRUE,
     selected = "Canarias",
-    options = pickerOptions(
-        actionsBox = TRUE,
-        liveSearch = TRUE,
-        noneSelectedText = "Ninguna CCAA seleccionada" # Texto que se muestra cuando está vacío
-    )
 )
 ```
 
@@ -635,45 +863,46 @@ div(renderHighchart({
 Mapa coroplético
 ================
 
-Column {.sidebar data-width=270}
+Column {.sidebar data-width=285}
 --------------------------------------------------
 
 ```{r widgets-mapa}
 # Widgets para selección de parámetros 
-pickerInput(
+selectInput(
     "indicador_mapa",
     label = "Indicador:",
     choices = indicadores_labels,
     selected = "Coste laboral medio / persona"
 )
 
-pickerInput(
+selectInput(
     "unidad_mapa",
     label = "Unidad:",
     choices = unidad_labels,
     selected = "EUR"
 )
 
-pickerInput(
+selectInput(
     "sector_mapa",
     label = "Sector:",
     choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))), # Total primero
     selected = "Total actividades"           
 )
 
-pickerInput(
+selectInput(
     "year_mapa", 
     label = "Año:",
     choices = sort(unique(data$year), decreasing = TRUE) , 
     selected = 2023
 )
 
-shinyWidgets::radioGroupButtons(
+radioButtons(
   inputId = "nuts_mapa",
   label = "NUTS:",
   choices = 0:2,
   selected = 0,
-  justified = TRUE
+  inline = TRUE
+  
 )
 
 opciones_mapa <- data %>%
@@ -683,17 +912,12 @@ opciones_mapa <- data %>%
     arrange(full_name) %>%
     tibble::deframe()
 
-pickerInput(
+selectInput(
     inputId = "seleccion_mapa",
     label = "Selecciona país(es):",
     choices = opciones_mapa,
     selected = NULL,      # <-- Perfecto, empieza vacío
     multiple = TRUE,      # <-- La clave 1: permite selección múltiple
-    options = pickerOptions(
-        actionsBox = TRUE,
-        liveSearch = TRUE,
-        noneSelectedText = "Ningún país seleccionado" # Texto que se muestra cuando está vacío
-  )
 )
 
 
@@ -711,7 +935,7 @@ observe({
     unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
     
     # actualiza el selector de unidad con esas opciones
-    updatePickerInput(
+    updateSelectInput(
         inputId = "unidad_mapa",
         choices = unidades_filtradas,
         selected = unidades_filtradas[1]
@@ -733,7 +957,7 @@ observe({
         sort()
 
     # Actualizamos las opciones del selector de sector
-    updatePickerInput(
+    updateSelectInput(
         inputId = "sector_mapa",
         choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
         selected = "Total actividades"
@@ -781,13 +1005,13 @@ observe({
   nueva_seleccion <- intersect(seleccion_actual, opciones_disponibles)
   
   # Si la intersección da un vector vacío, lo ponemos como NULL
-  # para que el pickerInput muestre "Ningún país seleccionado"
+  # para que el selectInput muestre "Ningún país seleccionado"
   if (length(nueva_seleccion) == 0) {
     nueva_seleccion <- NULL
   }
 
-  # 5. Actualizamos el pickerInput
-  updatePickerInput(
+  # 5. Actualizamos el selectInput
+  updateSelectInput(
     inputId = "seleccion_mapa",
     choices = opciones_disponibles,
     selected = nueva_seleccion # Usamos la selección preservada
@@ -932,7 +1156,7 @@ Comparación atributos
 
 Predicción ARIMA
 ================
-Column {.sidebar data-width=330}
+Column {.sidebar data-width=275}
 --------------------------------------------------
 ```{r funcion-reactive-arima}
 # --- CÁLCULO COMPARTIDO DEL MODELO ARIMA ---
@@ -955,6 +1179,10 @@ calculo_modelo_arima <- reactive({
     select(year, values) %>%
     filter(!is.na(values))
 
+  if (nrow(df_raw) == 0) {
+    return(NULL) # Devuelve NULL si no hay datos válidos, para evitar el error momentaneo
+  }
+  
   # 3. Conversión a tsibble (Serie completa)
   ts_completa <- df_raw %>%
     distinct(year, .keep_all = TRUE) %>% 
@@ -968,6 +1196,10 @@ calculo_modelo_arima <- reactive({
   datos_modelo <- ts_completa %>%
     filter(year >= year_start[1]) %>%
     filter(!is.na(values))
+  
+  if (nrow(datos_modelo) == 0) {
+    return(NULL) # Devuelve NULL si después de filtrar por año no hay datos
+  }
   
   # 5. Entrenamos el modelo
   arima_model <- datos_modelo %>%
@@ -984,21 +1216,21 @@ calculo_modelo_arima <- reactive({
 
 ```{r widgets-arima}
 # --- Selectores de parámetros ---
-pickerInput(
+selectInput(
     "indicador_arima",
     label = "Indicador:",
     choices = indicadores_labels,
     selected = "Coste laboral medio / persona"
 )
 
-pickerInput(
+selectInput(
     "unidad_arima",
     label = "Unidad:",
     choices = unidad_labels,
     selected = "EUR"
 )
 
-pickerInput(
+selectInput(
     "sector_arima",
     label = "Sector:",
     choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))), # Total primero
@@ -1006,15 +1238,15 @@ pickerInput(
 )
 
 
-shinyWidgets::radioGroupButtons(
+radioButtons(
   inputId = "nuts_arima",
   label = "NUTS:",
   choices = 0:2,
   selected = 0,
-  justified = TRUE
+  inline = TRUE
 )
 
-pickerInput(
+selectInput(
     inputId = "region_arima",
     label = "Selecciona país:",
     choices = data %>% 
@@ -1023,28 +1255,26 @@ pickerInput(
         unique() %>%
         sort(),
     selected = "Spain",
-    options = pickerOptions(
-        liveSearch = TRUE,
-    )
+    
 )
 
-noUiSliderInput(
+sliderInput(
     inputId = "year_arima",
     label = "Año de inicio datos:",
     min = 2000, # Valor temporal
     max = 2023, # Valor temporal
     value = 2000,
     step = 1,
-    # color = "#007bff", # Opcional: color azulito
-    format = wNumbFormat(decimals = 0) # Para que no salgan decimales (2010.00)
+    sep = "",
+    ticks = FALSE
 )
 
-shinyWidgets::radioGroupButtons(
+radioButtons(
    inputId = "h_arima", # 'h' es la letra típica para el horizonte de predicción
    label = "Años a predecir:",
    choices = 1:5,
-   selected = 5,    # Por defecto 5 años
-   justified = TRUE
+   selected = 5, # Por defecto 5 años
+   inline = TRUE
 )
 
 # --- Para que no se puedan seleccionar unidades que no existen ---
@@ -1061,7 +1291,7 @@ observe({
     unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
     
     # actualiza el selector de unidad con esas opciones
-    updatePickerInput(
+    updateSelectInput(
         inputId = "unidad_arima",
         choices = unidades_filtradas,
         selected = unidades_filtradas[1]
@@ -1083,7 +1313,7 @@ observe({
         sort()
 
     # Actualizamos las opciones del selector de sector
-    updatePickerInput(
+    updateSelectInput(
         inputId = "sector_arima",
         choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
         selected = "Total actividades"
@@ -1145,7 +1375,7 @@ observe({
   label_texto <- if (input$nuts_arima == "0") "Selecciona país:" else "Selecciona región:"
 
   # 6. Actualizamos
-  updatePickerInput(
+  updateSelectInput(
     session = session,
     inputId = "region_arima",
     label = label_texto,
@@ -1170,7 +1400,7 @@ observe({
       item == input$indicador_arima,
       unit == input$unidad_arima,
       sector_name == input$sector_arima,
-      # Aquí usamos el ID (geo) que devuelve el pickerInput
+      # Aquí usamos el ID (geo) que devuelve el selectInput
       geo == input$region_arima, 
       !is.na(values)
     ) %>%
@@ -1189,10 +1419,11 @@ observe({
 
   # 4. Actualizamos el slider
   #    Importante: Actualizamos el 'range' (topes) y el 'value' (selección)
-  updateNoUiSliderInput(
+  updateSliderInput(
     session = session,
     inputId = "year_arima",
-    range = c(min_year, max_year), # Nuevos límites
+    min = min_year,
+    max = max_year,
     value = min_year               # Reseteamos al inicio de los datos
   )
   
@@ -1202,8 +1433,9 @@ observe({
 ```{r metricas-arima}
 # --- MÉTRICAS DEL MODELO (SIDEBAR) ---
 renderUI({
-  
-  # 1. Traemos el modelo
+
+# 1. Traemos el modelo
+req(calculo_modelo_arima())
   resultado <- calculo_modelo_arima()
   req(resultado)
   
@@ -1230,7 +1462,8 @@ renderUI({
         h4("Modelo Seleccionado"),
         h3(nombre_modelo)
     )
-  )
+  )      
+
 })
 ```
 
@@ -1244,27 +1477,33 @@ Column
 
 ```{r predicion-arima} 
 renderPlotly({
-  
-  # 1. Llamamos al reactive compartido
-  #    Esto valida inputs y calcula el modelo (o recupera el cálculo si ya está hecho)
-  resultado <- calculo_modelo_arima()
-  
-  # 2. Calculamos la predicción (Esto es rápido)
-  req(input$h_arima)
-  h_val <- as.numeric(input$h_arima)
-  
-  forecast_pred <- resultado$modelo %>%
-    forecast(h = h_val)
-  
-  # 3. Graficamos
-  #    Usamos 'resultado$serie_completa' para que el gráfico muestre toda la historia
-  GraficoDinamicoArima95CI(
-    resultado$serie_completa,   
-    "year",              
-    "values",            
-    forecast_pred,       
-    input$region_arima   
-  )
+  req(calculo_modelo_arima())
+      # 1. Llamamos al reactive compartido
+      #    Esto valida inputs y calcula el modelo (o recupera el cálculo si ya está hecho)
+      resultado <- calculo_modelo_arima()
+      
+      # 2. Calculamos la predicción (Esto es rápido)
+      req(input$h_arima)
+      h_val <- as.numeric(input$h_arima)
+      
+      forecast_pred <- resultado$modelo %>%
+        forecast(h = h_val)
+      
+      nombre_pais <- data %>%
+      filter(geo == input$region_arima) %>%
+      pull(full_name) %>% 
+      unique() %>%
+      head(1)
+      
+      # 3. Graficamos
+      #    Usamos 'resultado$serie_completa' para que el gráfico muestre toda la historia
+      GraficoDinamicoArima95CI(
+        resultado$serie_completa,   
+        "year",              
+        "values",            
+        forecast_pred,       
+        paste("Predicción ARIMA -", nombre_pais)
+      )
 })
 ```
 
@@ -1272,26 +1511,28 @@ renderPlotly({
 
 ```{r comparacion-arima} 
 renderPlotly({
-  
-  # 1. Llamamos al mismo reactive compartido
-  resultado <- calculo_modelo_arima()
-  
-  # 2. Extraemos los valores ajustados (.fitted)
-  datos_ajustados <- augment(resultado$modelo)
-  
-  # 3. Graficamos con ggplot
-  p <- ggplot(datos_ajustados, aes(x = year)) +
+  req(calculo_modelo_arima())
+    # 1. Llamamos al mismo reactive compartido
+    resultado <- calculo_modelo_arima()
+    
+    # 2. Extraemos los valores ajustados (.fitted)
+    datos_ajustados <- augment(resultado$modelo)
+    
+    nombre_pais <- data %>%
+      filter(geo == input$region_arima) %>%
+      pull(full_name) %>% 
+      unique() %>%
+      head(1)
+    
+    # 3. Graficamos con ggplot
+    p <- ggplot(datos_ajustados, aes(x = year)) +
     geom_line(aes(y = values, color = "Real"), size = 0.8) +
     geom_line(aes(y = .fitted, color = "Ajuste ARIMA"), linetype = "dashed", size = 0.8) +
     labs(
-      title = paste("Ajuste del modelo -", input$region_arima),
-      y = input$unidad_arima, x = "Año", color = NULL
+      title = paste("           Ajuste del modelo -", nombre_pais),
+      y = "Valor", x = "Año", color = NULL
     ) +
-    scale_color_manual(values = c("Real" = "black", "Ajuste ARIMA" = "#d9534f")) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
-
-  ggplotly(p) %>%
-    layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
+    scale_color_manual(values = c("Real" = "black", "Ajuste ARIMA" = "#d9534f"))
+    p
 })
 ```
