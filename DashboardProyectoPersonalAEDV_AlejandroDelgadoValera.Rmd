@@ -80,13 +80,29 @@ GraficoDinamicoArima95CI <- function(
     fc[[date]] <- as.Date(fc[[date]])
   }
 
+  # A. Identificamos el último punto real
+  ultimo_dato_real <- tail(data2, 1)
+  val_real_final   <- ultimo_dato_real[[value]]
+  fecha_real_final <- ultimo_dato_real[[date]]
+  
+  # B. Creamos una fila "falsa" de predicción que es idéntica al dato real
+  #    Esto sirve de puente para que plotly una las líneas
+  fila_ancla <- fc[1, ] # Copiamos estructura de la primera fila de predicción
+  
+  fila_ancla[[date]] <- fecha_real_final # Misma fecha que el último real
+  fila_ancla$.mean   <- val_real_final   # El valor es el real
+  fila_ancla$lower   <- val_real_final   # Límite inf = valor real (sin margen)
+  fila_ancla$upper   <- val_real_final   # Límite sup = valor real (sin margen)
+  
+  # C. Pegamos esta fila AL PRINCIPIO de la predicción
+  fc <- dplyr::bind_rows(fila_ancla, fc)
 
 
 p <- plot_ly() %>%
-  add_lines(x=data2[[date]], y = data2[[value]], name = "Observación", line = list(color = "black")) %>%
-  add_lines(x=fc[[date]], y = fc$.mean, name = "Predicción", line = list(color = "blue")) %>%
   add_ribbons(x = fc[[date]], ymin = fc$lower, ymax = fc$upper,
               name = "95% CI", fillcolor = "rgba(0,0,150,0.2)", line = list(width = 0)) %>%
+  add_lines(x=fc[[date]], y = fc$.mean, name = "Predicción", line = list(color = "blue")) %>%
+  add_lines(x=data2[[date]], y = data2[[value]], name = "Observación", line = list(color = "black")) %>%
   layout(
       # Fuente Sans (Arial) y color gris oscuro (#333333)
       font = list(family = "Arial, sans-serif", color = "#333333"),
@@ -125,7 +141,7 @@ p <- plot_ly() %>%
         tickfont = list(color = "#555555")
       ),
       
-      # Leyenda arriba (estilo más limpio)
+      # Leyenda 
       legend = list(
         font = list(weight = "bold", size=15),
         orientation = "v",   # Vertical
@@ -1064,6 +1080,8 @@ observe({
 
 ```{r funciones-mapa}
 inputs.processing.mapa0 <- reactive({
+    req(input$indicador_mapa, input$unidad_mapa, input$sector_mapa, input$year_mapa)
+    
     etiqueta_valida <- paste(
         names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
         "-",
@@ -1084,6 +1102,8 @@ inputs.processing.mapa0 <- reactive({
   return(tb)
 })
 inputs.processing.mapa1 <- reactive({
+    req(input$indicador_mapa, input$unidad_mapa, input$sector_mapa, input$year_mapa)
+    
     etiqueta_valida <- paste(
         names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
         "-",
@@ -1104,6 +1124,8 @@ inputs.processing.mapa1 <- reactive({
 })
 
 inputs.processing.mapa2 <- reactive({
+    req(input$indicador_mapa, input$unidad_mapa, input$sector_mapa, input$year_mapa)
+    
     etiqueta_valida <- paste(
         names(indicadores_labels)[match(input$indicador_mapa, indicadores_labels)], 
         "-",
@@ -1148,7 +1170,6 @@ renderTable({
 })
 ```
 
-
 Column {.tabset}
 --------------------------------------------------
 
@@ -1157,6 +1178,8 @@ Column {.tabset}
 ```{r renderizado-mapa}
 # dibujamos el mapa coroplético
 leaflet::renderLeaflet({
+    req(input$indicador_mapa, input$unidad_mapa, input$sector_mapa, input$year_mapa)
+    
     # capturamos el resultado del procesado de los inputs 
     res <- switch(
         as.character(input$nuts_mapa),
@@ -1191,8 +1214,186 @@ etiquetas <-paste(
 })
 ```
 
+
 Comparación atributos
 =====================
+
+<!-- PRIMERA COLUMNA PARA SELECCIÓN DE PARÁMETROS Y MOSTRAR RESULTADOS 
+  SOBRE LA REGRESIÓN LINEAL OBTENIDA ENTRE LAS VARIABLES --> 
+
+Column {.sidebar data-width=250}
+--------------------------------------------------
+
+```{verbatim}
+# Widgets para selección de parámetros 
+selectInput(
+  "x", 
+  label = "x: atributo 1",
+  choices = unique(population$`Sexo/Indicador`), 
+  selected = "Mujeres/Var.Anual"
+)
+
+selectInput(
+  "x_scale", 
+  label = "Transformación del atributo x",
+  choices = c("none",
+              "sqrt",    
+              "log"
+             ), 
+  selected = "none"
+)
+
+selectInput(
+  "y", 
+  label = "y: atributo 2",
+  choices = unique(population$`Sexo/Indicador`), 
+  selected = "Hombres/Var.Anual"
+)
+
+selectInput(
+  "y_scale", 
+  label = "Transformación del atributo y",
+  choices = c("none",
+              "log",
+              "YeoJohnson"
+             ), 
+  selected = "none"
+)
+
+selectInput(
+  "Año.Comparación.Atributos", 
+  label = "Año",
+  choices = c("Todos",sort(unique(population$Año), decreasing = TRUE)), 
+  selected = "Todos"
+)
+
+```
+
+<!-- FUNCIÓN reactive PARA EL PROCESADO DE DATOS DE ESTA PÁGINA --> 
+
+```{verbatim}
+# función reactive que calcula los indicadores seleccionados transformados, 
+# en su caso, la transformación Yeo-Johnson entre ellos y
+# la regresión lineal del resultado. 
+# devuelve una lista con todo lo calculado
+# hay que tener en cuenta que si input$Año != "Todos" hay que filtrar por el año seleccionado 
+inputs.processing.comparacion.atributos <- reactive( {   
+  tb <-  population.wider %>% 
+  select(Año,municipio=Territorio,x=input$x,y=input$y) %>%  
+  na.omit()
+  
+  if(input$Año.Comparación.Atributos!="Todos"){
+    tb <- tb %>%
+      filter(Año==input$Año.Comparación.Atributos)
+  }
+    
+  # transformados los indicadores de acuerdo con los parámetros de la transformación
+  if(input$x_scale=="sqrt") tb$x <- sign(tb$x)*sqrt(abs(tb$x))
+  if(input$x_scale=="log") tb$x <-  sign(tb$x)*log(abs(tb$x))
+  if(input$y_scale=="log") tb$y <-  sign(tb$y)*log(abs(tb$y))
+  lambda <- 1  
+  if(input$y_scale=="YeoJohnson"){
+    lambda <- optimize.yeojohnson.R2(tb$x, tb$y) # Cálculo óptimo modelo Yeo-Jonhson 
+    tb$y <- yeo.johnson(tb$y,lambda)
+  }
+  
+  # Cálculo regresión lineal después de transformar las variables. 
+  fit <- lm(y ~ x,data=tb)
+  
+  # devolvemos una lista con todo lo calculado 
+  return(list(tb,fit,lambda))
+})
+``` 
+
+### 
+
+```{verbatim}
+# imprimimos en formato HTML los resultados del análisis de regresión 
+# de los indicadores seleccionados transformados
+shiny::renderUI({
+  
+  # capturamos el resultado del procesado de los inputs 
+  tb <- inputs.processing.comparacion.atributos()[[1]]
+  fit <- inputs.processing.comparacion.atributos()[[2]]
+  lambda <- inputs.processing.comparacion.atributos()[[3]]
+  
+  # imprimimos el resultado en formato HTML 
+  text <- paste(
+    "<strong>LINEAR REGRESSION ANALYSIS</strong> <br>",
+    "<strong>formula:   y=ax+b </strong><br>",
+    "<strong>x: Atributo 1 scaled </strong><br>",
+    "<strong>y: Atributo 2 scaled </strong><br>",
+    "<strong><br>RESULTS</strong><br>",
+    "<strong>correlation:</strong>",round(cor(tb$x,tb$y),digits = 8),
+    "<br><strong>slope (a):</strong>",formatC(fit$coefficients[2], format = "e", digits = 3),
+    "<br><strong>independent (b):</strong>",formatC(fit$coefficients[1], format = "e", digits = 3)
+  )
+  if(input$y_scale=="YeoJohnson"){
+    text <- paste(text,"<br><strong> lambda (YeoJohnson) :</strong>",formatC(lambda, format = "e", digits = 3))
+  } 
+  text <- paste(text,
+     "<br><strong>sd(residuos):</strong>",formatC(summary(fit)$sigma, format = "e", digits = 3),
+     "<br><strong>R2:</strong>",round(summary(fit)$r.squared, digits = 8)           
+  )
+      
+  HTML(text)
+})
+```
+
+<!-- NUEVA COLUMNA CON UN DIAGRAMA DE DISPERSIÓN PARA COMPARAR LOS ATRIBUTOS TRANSFORMADOS--> 
+
+Column
+--------------------------------------------------
+
+### Comparación atributos transformados
+
+```{verbatim} 
+# Diagrama de dispersión de los indicadores seleccionados transformados
+# Con la recta de regresión 
+renderPlotly({
+  
+  # capturamos el resultado del procesado de los inputs 
+  # y le añadimos una columna con la combinación municipio/Año 
+  # para usarla en el desplegable
+  tb <- inputs.processing.comparacion.atributos()[[1]] %>%
+    mutate(`municipio/año`=paste0(municipio," / ",Año))
+  
+  # dibujamos el diagrama de dispersión 
+  tb %>%
+    ggplot(aes(x,y,label=`municipio/año`)) + 
+    geom_point() +
+    theme(legend.position = "none") +
+    labs(x= input$x, y= input$y) +
+    geom_smooth(method = lm, se = FALSE) 
+  
+})
+```
+
+<!-- NUEVA COLUMNA PARA IMPRIMIR LOS ATRIBUTOS TRANSFORMADOS--> 
+
+Column {data-width=300}
+--------------------------------------------------
+
+### Valores atributos transformados
+
+```{verbatim}
+# imprimimos la tabla con los valores de los indicadores seleccionados 
+# ordenados por el primer indicador
+renderTable({
+  
+  # capturamos el resultado del procesado de los inputs 
+  tb <- inputs.processing.comparacion.atributos()[[1]]
+  
+  # imprimimos la tabla 
+  tb %>% 
+  arrange(desc(x)) %>% 
+  mutate(Año=as.character(Año)) %>% 
+  mutate(x=prettyNum(round(x,digits=2), big.mark = ",")) %>% 
+  mutate(y=prettyNum(round(y,digits=2), big.mark = ","))
+  
+})
+```
+
 
 Predicción ARIMA
 ================
@@ -1542,7 +1743,7 @@ renderPlotly({
         "year",              
         "values",            
         forecast_pred,       
-        paste("Predicción ARIMA -", nombre_pais)
+        "Predicción ARIMA"
       )
 })
 ```
@@ -1569,7 +1770,7 @@ renderPlotly({
     geom_line(aes(y = values, color = "Real"), size = 0.8) +
     geom_line(aes(y = .fitted, color = "Ajuste ARIMA"), linetype = "dashed", size = 0.8) +
     labs(
-      title = paste("           Ajuste del modelo -", nombre_pais),
+      title = "            Ajuste del modelo",
       y = "Valor", x = "Año", color = NULL
     ) +
     scale_color_manual(values = c("Real" = "black", "Ajuste ARIMA" = "#d9534f"))
@@ -1812,46 +2013,61 @@ renderPlotly({
 
 ### Visualización PCs
 
-```{r widgetVisualizacion-analisis-atributos}
-# INSERTAMOS LOS SELECTORES PARA ELEGIR LAS PC QUE SE USARÁN EN EL GRÁFICO
+```{r visualizacion-analisis-atributos} 
+tags$style(HTML("
+  #PCx, #PCy {
+    height: 30px !important;
+    min-height: 30px !important;
+    font-size: 12px !important;
+    padding-top: 5px !important;    
+    padding-bottom: 5px !important;
+    line-height: 1.5 !important;
+    padding-left: 10px !important;
+    padding-right: 5px !important
+  }
+
+ 
+  #contenedor_grafico_absoluto {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+"))
+
+
+
 tags$div(
-  style = "display:flex; gap:20px; align-items:center; flex-wrap:wrap;",
+  style = "height: 50px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; margin-bottom: 10px;",
+ 
   tags$div(
-    style="display:flex; align-items:center; gap:6px; min-width:200px;",
-    tags$label("Componente eje x", style="margin-bottom:0; white-space:nowrap;"),
-    shiny::numericInput(
-      "PCx",
-      label = NULL,
-      value=1,
-      min=1,
-      max=11,
-      step=1,
-      width = "80px"
+    style ="display:flex; align-items:center; gap:6px; min-width:150px;",
+    tags$label("Eje X:", style = "margin-bottom:0; white-space:nowrap; font-weight:bold;"),
+    numericInput(
+      "PCx", label = NULL, value = 1, min = 1, max = 15, step = 1, width = "50px"
     )
   ),
+ 
   tags$div(
-    style="display:flex; align-items:center; gap:6px; min-width:200px;",
-    tags$label("Componente eje y", style="margin-bottom:0; white-space:nowrap;"),
+    style = "display:flex; align-items:center; gap:6px; min-width:150px;",
+    tags$label("Eje Y:", style = "margin-bottom:0; white-space:nowrap; font-weight:bold;"),
     shiny::numericInput(
-      "PCy",
-      label = NULL,
-      value=2,
-      min=1,
-      max=11, 
-      step=1,
-      width = "80px"
+      "PCy", label = NULL, value = 2, min = 1, max = 15, step = 1, width = "50px"
     )
   )
 )
-```
 
-```{r visualizacion-analisis-atributos} 
-## DIBUJAMOS EL DIAGRAMA DE DISPERSIÓN CON LAS PC SELECCIONADAS
-div(style="width: 100%; height: 100%;",
-    highcharter::renderHighchart({
- hchart(pca(),choices=c(input$PCx,input$PCy)) 
-}
-    )
+tags$div(
+  id = "contenedor_grafico_absoluto",
+  highcharter::highchartOutput("grafico_pca_out", height = "100%")
 )
 
+
+output$grafico_pca_out <- highcharter::renderHighchart({
+  hchart(pca(), choices = c(input$PCx, input$PCy))
+})
 ```
+
+
