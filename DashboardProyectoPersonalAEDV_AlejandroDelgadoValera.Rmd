@@ -368,6 +368,35 @@ body {
   padding-bottom: 5px;
 }
 
+/* Ajuste para que el texto no toque el triangulito */
+/* 1. Hacemos hueco para el triangulo (Padding derecho) */
+.selectize-input {
+    padding-right: 28px !important; /* Espacio reservado para la flecha */
+    white-space: nowrap !important; /* Obliga a que sea una sola línea */
+}
+
+/* 2. Cortamos el texto elegantemente con puntos suspensivos (...) */
+.selectize-input > .item {
+    /*display: block !important;     /* Necesario para que funcione el corte */
+    overflow: hidden !important;   /* Oculta lo que sobra */
+    text-overflow: ellipsis !important; /* Añade los tres puntos */
+    width: 100% !important;        /* Ocupa todo el ancho disponible (menos el padding) */
+}
+
+.selectize-control.multi .selectize-input {
+    white-space: normal !important; /* PERMITE saltar de línea */
+    height: auto !important;        /* PERMITE crecer verticalmente */
+    overflow: visible !important;   /* Que se vean todas las etiquetas */
+}
+
+/* Reseteamos el comportamiento de los items (las etiquetas de países) */
+.selectize-control.multi .selectize-input > .item {
+    display: inline-block !important; /* Que se pongan uno al lado del otro */
+    width: auto !important;           /* Que ocupen solo lo que mida el texto */
+    margin-right: 3px !important;     /* Un poco de aire entre etiquetas */
+    margin-bottom: 2px !important;    /* Aire vertical */
+}
+
 /* 4. ENCABEZADO SUPERIOR (HEADER) */
 .navbar {
   background-color: var(--main-color) !important;
@@ -472,8 +501,6 @@ body {
   margin-bottom: 0;
   line-height: 1.1; /* Espacio de línea ajustado */
 }
-
-
 ```
 
 
@@ -1076,7 +1103,7 @@ observe({
 })
 ```
 
-<!-- Funciones reactive (NO MUESTRA NADA) --> 
+<!-- Funciones reactive --> 
 
 ```{r funciones-mapa}
 inputs.processing.mapa0 <- reactive({
@@ -1178,7 +1205,7 @@ Column {.tabset}
 ```{r renderizado-mapa}
 # dibujamos el mapa coroplético
 leaflet::renderLeaflet({
-    req(input$indicador_mapa, input$unidad_mapa, input$sector_mapa, input$year_mapa)
+    req(input$indicador_mapa, input$unidad_mapa, input$sector_mapa, input$year_mapa, input$nuts_mapa)
     
     # capturamos el resultado del procesado de los inputs 
     res <- switch(
@@ -1198,18 +1225,18 @@ leaflet::renderLeaflet({
         )
     )
 
-tb   <- res$tb
-geoj <- res$geoj
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>",tb$indicador_unidad,
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
- # dibujamos el mapa 
- MapaCoroplético(geoj,tb$values,etiquetas,"Valor")
+    tb   <- res$tb
+    geoj <- res$geoj
+    
+    etiquetas <-paste(
+        "<strong> ",tb$full_name ,
+        "</strong><br>",tb$indicador_unidad,
+        ": ",prettyNum(round(tb$values,digits=2), big.mark = ",", scientific = FALSE)
+      )  %>%
+     lapply(htmltools::HTML)
+    
+     # dibujamos el mapa 
+     MapaCoroplético(geoj,tb$values,etiquetas,"Valor")
  
 })
 ```
@@ -1221,16 +1248,62 @@ Comparación atributos
 <!-- PRIMERA COLUMNA PARA SELECCIÓN DE PARÁMETROS Y MOSTRAR RESULTADOS 
   SOBRE LA REGRESIÓN LINEAL OBTENIDA ENTRE LAS VARIABLES --> 
 
-Column {.sidebar data-width=250}
+Column {.sidebar data-width=310}
 --------------------------------------------------
 
-```{verbatim}
+```{r data-compAtr}
+data_comb <- data %>%
+  mutate(
+    # Buscamos el nombre humano del indicador usando tu vector (match busca el valor y devuelve el índice del nombre)
+    nombre_item = names(indicadores_labels)[match(item, indicadores_labels)],
+    
+    # Buscamos el nombre humano de la unidad
+    nombre_unit = names(unidad_labels)[match(unit, unidad_labels)],
+    
+    # --- CREAMOS EL ATRIBUTO COMBINADO (Lo que ve el usuario) ---
+    # Ej: "Coste laboral / hora trabajada (EUR)"
+    label_comb = paste0(nombre_item, " (", nombre_unit, ")"),
+    
+    # --- CREAMOS EL ID COMBINADO (Lo que usa el programa) ---
+    # Usamos un separador raro "__" para poder separarlo luego fácil
+    # Ej: "D1_SAL_HW__EUR"
+    id_comb = paste(item, unit, sep = "__")
+  )
+
+# 2. Creamos el vector de opciones para el selector
+#    Formato: c("Nombre Bonito" = "CODIGO__UNIDAD")
+opciones_combinadas <- data_comb %>%
+  select(label_comb, id_comb) %>%
+  distinct() %>%
+  arrange(label_comb) %>%
+  tibble::deframe() # Convierte tabla de 2 columnas en vector nombrado
+```
+
+```{r widgets-compAtr}
 # Widgets para selección de parámetros 
+radioButtons(
+  inputId = "ambito_ca",
+  label = "Comparar por: ",
+  choices = c("Indicadores", "Sectores laborales"),
+  selected = "Indicadores"
+)
+
+conditionalPanel(
+  condition = "input.ambito_ca == 'Sectores laborales'",
+  selectInput(
+    inputId = "ref_sector_mode",
+    label = "Métrica a comparar:",
+    # Filtramos solo las de Coste laboral por hora (tu requisito anterior)
+    choices = opciones_combinadas[grep("D1_SAL_HW", opciones_combinadas)], 
+    selected = opciones_combinadas[grep("D1_SAL_HW", opciones_combinadas)][1]
+  )
+)
+
 selectInput(
   "x", 
   label = "x: atributo 1",
-  choices = unique(population$`Sexo/Indicador`), 
-  selected = "Mujeres/Var.Anual"
+  choices = opciones_combinadas, 
+  selected = opciones_combinadas[1] # Coste laboral / persona
 )
 
 selectInput(
@@ -1246,8 +1319,8 @@ selectInput(
 selectInput(
   "y", 
   label = "y: atributo 2",
-  choices = unique(population$`Sexo/Indicador`), 
-  selected = "Hombres/Var.Anual"
+  choices = opciones_combinadas, 
+  selected = opciones_combinadas[7] # Horas trabajadas
 )
 
 selectInput(
@@ -1263,29 +1336,135 @@ selectInput(
 selectInput(
   "Año.Comparación.Atributos", 
   label = "Año",
-  choices = c("Todos",sort(unique(population$Año), decreasing = TRUE)), 
+  choices = c("Todos",2023:1995), 
   selected = "Todos"
 )
 
+
+observe({
+   req(input$ambito_ca) # Esperamos a que exista el ámbito
+
+   # Definimos las opciones dentro del observe para evitar errores de scope
+   if (input$ambito_ca == "Sectores laborales") {
+      # Si es sectores, cogemos los nombres únicos del data
+      mis_opciones <- sort(unique(data$sector_name))
+      etiqueta_x <- "Sector (X):"
+      etiqueta_y <- "Sector (Y):"
+
+   } else {
+      # Si es indicadores, usamos tu vector 'indicadores_labels'
+      mis_opciones <- indicadores_labels
+      etiqueta_x <- "Indicador (X):"
+      etiqueta_y <- "Indicador (Y):"
+   }
+
+   # Actualizamos input X
+   updateSelectInput(
+      inputId = "x",
+      label = etiqueta_x,
+      choices = mis_opciones,
+      selected = mis_opciones[1]
+   )
+
+   # Actualizamos input Y (seleccionamos el 2º por defecto para variar)
+   updateSelectInput(
+      inputId = "y",
+      label = etiqueta_y,
+      choices = mis_opciones,
+      selected = mis_opciones[2]
+   )
+})
+
+observe({
+   req(input$ambito_ca)
+   
+   if (input$ambito_ca == "Sectores laborales") {
+      # --- MODO SECTORES ---
+      # X e Y se convierten en selectores de SECTORES
+      mis_opciones <- sort(unique(data$sector_name))
+      etiqueta_x <- "Sector (X):"
+      etiqueta_y <- "Sector (Y):"
+      
+   } else {
+      # --- MODO VARIABLES ---
+      # X e Y son tus variables combinadas
+      mis_opciones <- opciones_combinadas
+      etiqueta_x <- "Variable (X):"
+      etiqueta_y <- "Variable (Y):"
+   }
+
+   # Actualizamos X
+   updateSelectInput(inputId = "x", label = etiqueta_x, choices = mis_opciones, selected = mis_opciones[1])
+   
+   # Actualizamos Y
+   # Dejamos en selected horas trabajadas vs remuneración si es por indicador
+   sel_y <- ifelse(mis_opciones[1] == sort(unique(data$sector_name))[1], mis_opciones[2], mis_opciones[7])
+   updateSelectInput(inputId = "y", label = etiqueta_y, choices = mis_opciones, selected = sel_y)
+})
 ```
 
 <!-- FUNCIÓN reactive PARA EL PROCESADO DE DATOS DE ESTA PÁGINA --> 
 
-```{verbatim}
+```{r funcion-compAtr}
 # función reactive que calcula los indicadores seleccionados transformados, 
 # en su caso, la transformación Yeo-Johnson entre ellos y
 # la regresión lineal del resultado. 
 # devuelve una lista con todo lo calculado
 # hay que tener en cuenta que si input$Año != "Todos" hay que filtrar por el año seleccionado 
 inputs.processing.comparacion.atributos <- reactive( {   
-  tb <-  population.wider %>% 
-  select(Año,municipio=Territorio,x=input$x,y=input$y) %>%  
-  na.omit()
+  # Validamos inputs
+  req(input$x, input$y, input$Año.Comparación.Atributos)
   
-  if(input$Año.Comparación.Atributos!="Todos"){
-    tb <- tb %>%
-      filter(Año==input$Año.Comparación.Atributos)
+  # 1. Preparación y filtro inicial
+  df_base <- data_comb 
+  
+  if(input$Año.Comparación.Atributos != "Todos"){
+    df_base <- df_base %>% filter(year == input$Año.Comparación.Atributos)
+  } else {
+    df_base <- df_base %>% filter(NUTS == 0) # quitamos regiones nuts 1 y 2 si mostramos todos los países
   }
+  
+  # 2. PIVOTAR (Con corrección para duplicados)
+  if (input$ambito_ca == "Sectores laborales") {
+    # --- MODO SECTORES ---
+    req(input$ref_sector_mode)
+    
+    tb_wide <- df_base %>%
+      filter(id_comb == input$ref_sector_mode) %>%     
+      filter(sector_name %in% c(input$x, input$y)) %>%  
+      select(year, full_name, sector_name, values) %>%
+      # CORRECCIÓN AQUÍ: values_fn = mean asegura que devuelva un número, no una lista
+      pivot_wider(names_from = sector_name, values_from = values, values_fn = mean)
+      
+  } else {
+    # --- MODO VARIABLES ---
+    tb_wide <- df_base %>%
+      filter(id_comb %in% c(input$x, input$y)) %>%
+      select(year, full_name, sector_name, id_comb, values) %>% 
+      # CORRECCIÓN AQUÍ:
+      pivot_wider(names_from = id_comb, values_from = values, values_fn = mean)
+  }
+
+  # 3. Renombrar y Limpiar
+  #    Usamos un tryCatch o validación simple por si el pivot no genera las columnas esperadas
+  #    (ej: si para un año no hay datos de una variable)
+  
+  # Verificamos que las columnas existan antes de renombrar
+  if(!all(c(input$x, input$y) %in% names(tb_wide))) {
+      return(NULL) # O manejar el error silenciosamente
+  }
+
+  tb <- tb_wide %>%
+    rename(
+      x = !!sym(input$x), 
+      y = !!sym(input$y)
+    ) %>%
+    # OJO: Asegúrate de que 'full_name' es lo que quieres como 'municipio'
+    select(year, full_name, x, y) %>%
+    na.omit() # Quitamos NAs antes de procesar
+    
+  # Si tras el na.omit no quedan datos, paramos para evitar error en lm
+  if(nrow(tb) == 0) return(NULL)
     
   # transformados los indicadores de acuerdo con los parámetros de la transformación
   if(input$x_scale=="sqrt") tb$x <- sign(tb$x)*sqrt(abs(tb$x))
@@ -1307,36 +1486,42 @@ inputs.processing.comparacion.atributos <- reactive( {
 
 ### 
 
-```{verbatim}
-# imprimimos en formato HTML los resultados del análisis de regresión 
-# de los indicadores seleccionados transformados
-shiny::renderUI({
+```{r métricas-compAtr}
+renderUI({
+  req(inputs.processing.comparacion.atributos())
+  resultado <- inputs.processing.comparacion.atributos()
   
-  # capturamos el resultado del procesado de los inputs 
-  tb <- inputs.processing.comparacion.atributos()[[1]]
-  fit <- inputs.processing.comparacion.atributos()[[2]]
-  lambda <- inputs.processing.comparacion.atributos()[[3]]
-  
-  # imprimimos el resultado en formato HTML 
-  text <- paste(
-    "<strong>LINEAR REGRESSION ANALYSIS</strong> <br>",
-    "<strong>formula:   y=ax+b </strong><br>",
-    "<strong>x: Atributo 1 scaled </strong><br>",
-    "<strong>y: Atributo 2 scaled </strong><br>",
-    "<strong><br>RESULTS</strong><br>",
-    "<strong>correlation:</strong>",round(cor(tb$x,tb$y),digits = 8),
-    "<br><strong>slope (a):</strong>",formatC(fit$coefficients[2], format = "e", digits = 3),
-    "<br><strong>independent (b):</strong>",formatC(fit$coefficients[1], format = "e", digits = 3)
+  tb     <- resultado[[1]]
+  fit    <- resultado[[2]]
+  lambda <- resultado[[3]]
+
+  # 1. Construimos el texto HTML (Casi igual que lo tenías)
+  texto_html <- paste0(
+    "<h3>Linear Regression Analysis</h3>",
+    "<strong>Formula:</strong> y = ax + b <br>",
+    "<strong>x:</strong> Atributo 1 (scaled)<br>",
+    "<strong>y:</strong> Atributo 2 (scaled)<br>",
+    "<hr style='margin: 10px 0; border-top: 1px solid #ccc;'>", # Línea separadora sutil
+    "<strong>RESULTS</strong><br>",
+    "• <strong>Correlation:</strong> ", round(cor(tb$x, tb$y), digits = 4), "<br>",
+    "• <strong>Slope (a):</strong> ", formatC(fit$coefficients[2], format = "e", digits = 3), "<br>",
+    "• <strong>Intercept (b):</strong> ", formatC(fit$coefficients[1], format = "e", digits = 3), "<br>",
+    "• <strong>SD (residuos):</strong> ", formatC(summary(fit)$sigma, format = "e", digits = 3), "<br>",
+    "• <strong>R²:</strong> ", round(summary(fit)$r.squared, digits = 4)
   )
-  if(input$y_scale=="YeoJohnson"){
-    text <- paste(text,"<br><strong> lambda (YeoJohnson) :</strong>",formatC(lambda, format = "e", digits = 3))
-  } 
-  text <- paste(text,
-     "<br><strong>sd(residuos):</strong>",formatC(summary(fit)$sigma, format = "e", digits = 3),
-     "<br><strong>R2:</strong>",round(summary(fit)$r.squared, digits = 8)           
+
+  # 2. Añadimos la parte condicional
+  if(input$y_scale == "YeoJohnson"){
+    texto_html <- paste0(
+      texto_html, 
+      "<br>• <strong>Lambda (YeoJohnson):</strong> ", formatC(lambda, format = "e", digits = 3)
+    )
+  }
+
+  # 3. LO METEMOS TODO DENTRO DE TU CAJA CSS
+  div(class = "box-metricas",
+      HTML(texto_html)
   )
-      
-  HTML(text)
 })
 ```
 
@@ -1347,7 +1532,7 @@ Column
 
 ### Comparación atributos transformados
 
-```{verbatim} 
+```{r grafica-compAtr} 
 # Diagrama de dispersión de los indicadores seleccionados transformados
 # Con la recta de regresión 
 renderPlotly({
@@ -1356,27 +1541,44 @@ renderPlotly({
   # y le añadimos una columna con la combinación municipio/Año 
   # para usarla en el desplegable
   tb <- inputs.processing.comparacion.atributos()[[1]] %>%
-    mutate(`municipio/año`=paste0(municipio," / ",Año))
+    mutate(`Región/Año`=paste(full_name," / ", year))
   
+  # Cambiamos el nombre de los labels para que no sea código
+    label_x <- if (input$ambito_ca == "Sectores laborales") {
+      # En modo sectores, el input YA es el nombre (ej: "Construcción")
+      input$x 
+    } else {
+      # En modo variables, buscamos el nombre en tu vector de opciones
+      names(opciones_combinadas)[match(input$x, opciones_combinadas)]
+    }
+    
+    # 2. Calculamos la etiqueta bonita para el Eje Y
+    label_y <- if (input$ambito_ca == "Sectores laborales") {
+      input$y
+    } else {
+      names(opciones_combinadas)[match(input$y, opciones_combinadas)]
+    }
+
   # dibujamos el diagrama de dispersión 
   tb %>%
-    ggplot(aes(x,y,label=`municipio/año`)) + 
+    ggplot(aes(x,y, label = `Región/Año`)) + 
     geom_point() +
     theme(legend.position = "none") +
-    labs(x= input$x, y= input$y) +
+    labs(x= label_x, y= label_y) +
     geom_smooth(method = lm, se = FALSE) 
   
 })
 ```
 
 <!-- NUEVA COLUMNA PARA IMPRIMIR LOS ATRIBUTOS TRANSFORMADOS--> 
+<!-- 297 = 310 - barra scroll --> 
 
-Column {data-width=300}
+Column {data-width=297}
 --------------------------------------------------
 
 ### Valores atributos transformados
 
-```{verbatim}
+```{r tabla-compAtr}
 # imprimimos la tabla con los valores de los indicadores seleccionados 
 # ordenados por el primer indicador
 renderTable({
@@ -1387,7 +1589,8 @@ renderTable({
   # imprimimos la tabla 
   tb %>% 
   arrange(desc(x)) %>% 
-  mutate(Año=as.character(Año)) %>% 
+  mutate(year=as.character(year)) %>% 
+  rename(Región = full_name, Año = year) %>% 
   mutate(x=prettyNum(round(x,digits=2), big.mark = ",")) %>% 
   mutate(y=prettyNum(round(y,digits=2), big.mark = ","))
   
