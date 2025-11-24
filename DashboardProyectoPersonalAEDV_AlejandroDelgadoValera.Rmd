@@ -969,7 +969,7 @@ selectInput(
 
 sliderInput(
     inputId = "year_mapa",
-    label = "Año de inicio datos:",
+    label = "Año:",
     min = 1995, 
     max = 2023, 
     value = 2023,
@@ -2374,6 +2374,9 @@ renderUI({
   )
 })
 
+checkboxInput(
+  "scale_free_y", "Escala eje Y libre", value = TRUE)
+
 # --- Para que no se puedan seleccionar unidades que no existen ---
 observe({
     req(input$indicador_series) # Confirmamos que haya algo seleccionado
@@ -2644,14 +2647,14 @@ renderPlotly({
   
   req(filtrado_series_temporales())
   tb <- filtrado_series_temporales()$datos
+  scale_y <- ifelse(input$scale_free_y==TRUE,"free_y","fixed")
     
   if (input$ambito_series == "Regiones") {
       
-    # Rama Regiones: Ya viene ordenada del reactive, no toques el factor
     p <- tb %>% 
       ggplot(aes(year, y=values)) +
       geom_line() +
-      facet_wrap(~full_name, scales = "free_y", ncol=4) +
+      facet_wrap(~full_name, scales = scale_y, ncol=3) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
       labs(x="", y="")
@@ -2665,7 +2668,7 @@ renderPlotly({
       filter(geo == input$seleccion_series) %>%
       ggplot(aes(year, y=values)) +
       geom_line() +
-      facet_wrap(~sector_name, scales = "free_y", ncol=4) +
+      facet_wrap(~sector_name, scales = scale_y, ncol=4) +
       theme_minimal() +
       theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
       labs(x="", y="")
@@ -2675,37 +2678,6 @@ renderPlotly({
   }
 })
 ```
-
-
-```{verbatim}
-renderPlotly({
-  req(filtrado_series_temporales())
-  tb <- filtrado_series_temporales()$datos
-    
-  if (input$ambito_series == "Regiones") {
-      
-  tb %>% 
-    ggplot(aes(year,y=values)) +
-    geom_line() +
-    facet_wrap(~full_name,scales = "free_y",ncol=4) +
-    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
-    labs(x="",y="")
-      
-  } else {
-    ggplot(aes(year,y=values)) +
-    geom_line() +
-    facet_wrap(~sector_name,scales = "free_y",ncol=4) +
-    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
-    labs(x="",y="")
-      
-  }
-})
-```
-
-
-
-
-
 
 ### Superpuestos
 
