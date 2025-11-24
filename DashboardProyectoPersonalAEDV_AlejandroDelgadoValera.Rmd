@@ -555,18 +555,13 @@ geoj1.tb <- geoj1 %>% as_tibble()
 geoj2.tb <- geoj2 %>% as_tibble()
 ```
 
-viejo
+Series temporales
 =================
-```{r ST_paises-analisis-data}
-filtrado_series_temporales <- reactive({
-    tb <- data %>% 
-        filter(item == input$indicador, unit == input$unidad, sector_name == input$sector)
-    return(tb)
-})
-```
 
-```{r ST_paises-widgets-seleccion}
-# --- Relación entre indicadores (códigos del dataset) y las unidades disponibles ---
+Column {.sidebar data-width=275}
+--------------------------------------------------
+
+```{r widget-series}
 indicador_unidades <- list(
     "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
     "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
@@ -588,88 +583,94 @@ unidad_labels <- c(
     "Horas anuales" = "HW"
 )
 
-# --- Selectores de parámetros ---
-div(
-    style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
-  
-    # - Indicador -
-    div(
-        selectInput(
-            "indicador",
-            label = "Indicador:",
-            choices = indicadores_labels,
-            selected = "Coste laboral medio / persona"
-        )
-    ),
-  
-    # - Unidad -
-    div(
-        selectInput(
-            "unidad",
-            label = "Unidad:",
-            choices = unidad_labels,
-            selected = "EUR"
-        )
-    ),
-  
-   # - Sector -
-    div(
-        selectInput(
-            inputId = "sector",
-            label = "Sector:",
-            choices = c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades"))),
-            selected = "Total actividades"           
-        )
-    ),
-  
-    # Condicional para la comparativa de países
-    conditionalPanel(
-        # La 'condition' es una expresión de JavaScript.
-        condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa países'",
-    
-        div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-            selectInput(
-                inputId = "paises_seleccion",
-                label = "Selecciona países:",
-                choices = data %>% 
-                    filter(NUTS==0) %>% 
-                    pull(full_name) %>%
-                    unique() %>%
-                    sort(),
-            multiple = TRUE,
-            selected = "Spain"
-            )
-        )
-    ),
-  
-    # Condicional para la comparativa de CCAA
-    conditionalPanel(
-        # La 'condition' es una expresión de JavaScript.
-        condition = "input.ID_DE_TUS_PESTAÑAS == 'Comparativa CCAA'",
-    
-        div( # Lo envuelvo en un div para que sea un "hijo" del flexbox
-            selectInput(
-                inputId = "ccaa_seleccion",
-                label = "Selecciona comunidades:",
-                choices = data %>% 
-                    filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
-                    pull(full_name) %>%
-                    unique() %>%
-                    sort(),
-            multiple = TRUE,
-            selected = "Canarias"
-            )
-        )
-    )
+radioButtons(
+    "ambito_series",
+    label = "Comparar por: ",
+    choices = c("Regiones", "Sectores laborales"),
+    selected = "Regiones"
 )
 
+# - Indicador -
+selectInput(
+    "indicador_series",
+    label = "Indicador:",
+    choices = indicadores_labels,
+    selected = "Coste laboral medio / persona"
+)
+  
+# - Unidad -
+selectInput(
+    "unidad_series",
+    label = "Unidad:",
+    choices = unidad_labels,
+    selected = "EUR"
+)
+
+# - Sector -
+conditionalPanel(
+  condition = "input.ambito_series == 'Regiones'",
+  selectInput(
+    inputId = "sector_series",
+    label = "Sector:",
+    choices = NULL, # Lo rellenamos dinámicamente desde el server
+    selected = NULL
+  )
+)
+
+# - NUTS -
+radioButtons(
+    "nuts_series",
+    label = "NUTS:",
+    choices = c(0:2, "CCAA"),
+    selected = 0,
+    inline = TRUE
+)
+
+conditionalPanel(
+  condition = "input.ambito_series == 'Sectores laborales'",
+  selectInput(
+    inputId = "seleccion_series",
+    label = "Selecciona región:",
+    choices = NULL, # Lo rellenamos desde el server
+    selected = NULL
+  )
+)
+
+# Línea para dividir
+renderUI({
+    hr(style = "border-top: 2px solid #dcdcdc; margin: 40px 0;")
+})
+
+
+checkboxInput(
+  "scale_free_y", "Escala eje Y libre", value = TRUE)
+
+renderUI({
+  # Dependemos de que los datos ya estén calculados para saber cuántas páginas hay
+  req(filtrado_series_temporales())
+  total_pags <- filtrado_series_temporales()$total_paginas
+  actual_page <- filtrado_series_temporales()$pag_actual
+  
+  # Si solo hay 1 página, no mostramos el selector para no ensuciar
+  # if (total_pags <= 1) return(NULL)
+  
+  # Input numérico simple con flechitas
+  numericInput(
+    inputId = "pagina_series",
+    label = paste0("Página (", actual_page, " de ", total_pags, "):"),
+    value = actual_page,
+    min = 1,
+    max = total_pags,
+    step = 1
+  )
+})
 
 # --- Para que no se puedan seleccionar unidades que no existen ---
 observe({
-    req(input$indicador) # Confirmamos que haya algo seleccionado
+    req(input$indicador_series) # Confirmamos que haya algo seleccionado
     
     # obtén el código del indicador seleccionado (por ejemplo "D1_SAL_HW")
-    indicador_sel <- input$indicador
+    indicador_sel <- input$indicador_series
     
     # busca las unidades válidas para ese indicador
     unidades_validas <- indicador_unidades[[indicador_sel]]
@@ -679,261 +680,456 @@ observe({
     
     # actualiza el selector de unidad con esas opciones
     updateSelectInput(
-        inputId = "unidad",
+        inputId = "unidad_series",
         choices = unidades_filtradas,
         selected = unidades_filtradas[1]
     )
 })
 
-# --- Para que no se puedan seleccionar sectores que no existen ---
+# --- Solo el indicador disponible si comparamos por sectores ---
 observe({
-    req(input$indicador, input$unidad) # Confirmamos que haya algo seleccionado
+  req(input$ambito_series)
+  
+  if (input$ambito_series == "Sectores laborales") {
     
-    # Filtramos los datos disponibles con los inputs actuales
-    sectores_disponibles <- data %>%
-        filter(
-            item == input$indicador,
-            unit == input$unidad
-        ) %>%
-        pull(sector_name) %>%
-        unique() %>%
-        sort()
-
-    # Actualizamos las opciones del selector de sector
+    # 1. Forzamos el indicador a Coste Laboral / Persona
     updateSelectInput(
-        inputId = "sector",
-        choices = c("Total actividades", sort(setdiff(unique(sectores_disponibles), "Total actividades"))),
+      inputId = "indicador_series",
+      selected = "Coste laboral medio / persona" 
+    )
+  }
+})
+
+# --- Seleccionar region solo disponible para comparar por sectores --- 
+observe({
+  # Solo trabajamos si estamos en la pestaña correcta y hay un NUTS seleccionado
+  req(input$ambito_series, input$nuts_series)
+  
+  # Si no estamos en modo sectores, no gastamos recursos calculando
+  if (input$ambito_series != "Sectores laborales") return()
+
+  # 1. Filtramos las opciones disponibles según el NUTS
+  df_opciones <- data %>%
+    select(full_name, geo, NUTS) %>%
+    distinct() # Nos quedamos con los únicos para no procesar todo el dataset
+
+  if (input$nuts_series == "CCAA") {
+    # Caso especial CCAA: NUTS 2 y empieza por ES
+    df_opciones <- df_opciones %>% filter(NUTS == 2, grepl("^ES", geo))
+  } else {
+    # Caso normal (0, 1, 2)
+    df_opciones <- df_opciones %>% filter(NUTS == input$nuts_series)
+  }
+
+  # 2. Creamos el vector de opciones (Nombre = Codigo)
+  opciones_vector <- df_opciones %>%
+    arrange(full_name) %>%
+    tibble::deframe()
+
+  # 3. Lógica de Prioridad (Default)
+  #    Definimos a quién buscamos
+  target_name <- if (input$nuts_series == "0") "Spain" else "Canarias"
+  
+  #    Buscamos el código de ese target en las opciones disponibles
+  #    (Usamos grepl para ser flexibles si se llama "Canarias (ES)" o similar)
+  codigo_por_defecto <- df_opciones %>%
+    filter(grepl(target_name, full_name, ignore.case = TRUE)) %>%
+    pull(geo) %>%
+    head(1) # Por seguridad cogemos el primero si hubiera varios
+
+  # 4. Selección Final
+  #    Si encontramos al target, lo seleccionamos. Si no (ej: datos corruptos), el primero de la lista.
+  seleccion_final <- if (length(codigo_por_defecto) > 0) codigo_por_defecto else opciones_vector[1]
+
+  # 5. Actualizamos el input
+  updateSelectInput(
+    session = session, # Asegúrate de tener 'session' en tu función server(input, output, session)
+    inputId = "seleccion_series",
+    label = if(input$nuts_series == "0") "Selecciona país:" else "Selecciona región:",
+    choices = opciones_vector,
+    selected = seleccion_final
+  )
+})
+
+# --- Filtrar indicador con datos por sectores si vamos a comparar por ellos ---
+observe({
+  req(input$ambito_series)
+  
+  if (input$ambito_series == "Sectores laborales") {
+    
+    # OPCIÓN A: MODO SECTORES
+    # Le pasamos UNA sola opción en 'choices'. Así el usuario no puede elegir otra.
+    updateSelectInput(
+      inputId = "indicador_series",
+      choices = c("Coste laboral / hora trabajada" = "D1_SAL_HW"), 
+      selected = "D1_SAL_HW"
+    )
+    
+  } else {
+    
+    # OPCIÓN B: MODO REGIONES
+    # Le devolvemos la lista completa original 'indicadores_labels'
+    updateSelectInput(
+      inputId = "indicador_series",
+      choices = indicadores_labels, 
+      selected = indicadores_labels[2]
+    )
+    
+  }
+})
+
+# --- Solo sectores disponibles ---
+observe({
+  req(input$indicador_series, input$ambito_series)
+  
+  # Solo trabajamos si estamos en la pestaña Regiones
+  if (input$ambito_series == "Regiones") {
+    
+    # ¿Es el indicador que tiene sectores? (Usa el código interno, ej: "D1_SAL_HW")
+    if (input$indicador_series == "D1_SAL_HW") {
+      
+      # Opción A: Cargamos TODOS los sectores
+      lista_sectores <- c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades")))
+      
+      updateSelectInput(
+        inputId = "sector_series",
+        choices = lista_sectores,
+        selected = "Total actividades" # O input$sector_series para mantener selección
+      )
+      
+    } else {
+      
+      # Opción B: Forzamos a SOLO Total Actividades
+      updateSelectInput(
+        inputId = "sector_series",
+        choices = c("Total actividades"),
         selected = "Total actividades"
       )
+    }
+  }
 })
 ```
 
+```{r funcion-series}
+filtrado_series_temporales <- reactive({
+  
+  # 1. Validaciones básicas
+  req(
+    input$indicador_series, 
+    input$unidad_series, 
+    input$nuts_series
+  )
+  
+  # --- MODIFICACIÓN 1: Definimos los códigos que quieres fijos ---
+  codigos_fijos <- c("ES", "ES70") 
+
+  # 2. Filtro Base (Tus datos variables según el NUTS seleccionado)
+  df_base <- data %>%
+    filter(
+      item == input$indicador_series,
+      unit == input$unidad_series,
+      !is.na(values)
+    )
+  
+  if (input$nuts_series == "CCAA") {
+    
+    # Caso CCAA: Filtramos NUTS 2 Y solo regiones de España (empiezan por ES)
+    df_base <- df_base %>%
+      filter(substr(geo, 1, 2) == "ES" & NUTS == 2)
+      
+  } else {
+    
+    # Caso Normal (0, 1, 2): Filtramos tal cual
+    df_base <- df_base %>%
+      filter(NUTS == input$nuts_series)
+      
+  }
+  
+  # --- MODIFICACIÓN 2: Rescatamos datos de España y Canarias SIEMPRE (Ignorando el NUTS) ---
+  df_fijos <- data %>%
+    filter(
+      item == input$indicador_series,
+      unit == input$unidad_series,
+      geo %in% codigos_fijos,
+      !is.na(values)
+    )
+
+  # Si no hay datos en ninguno de los dos lados, paramos
+  if(nrow(df_base) == 0 && nrow(df_fijos) == 0) return(NULL)
+
+  # --- RAMA A: COMPARAR PAÍSES (PAGINACIÓN) ---
+  if (input$ambito_series == "Regiones") { 
+    
+    # a. Obtenemos la lista única de territorios VARIABLES (Quitamos los fijos para no duplicar)
+    #    Esto es importante: si seleccionas NUTS 0, España ya estaría en df_base, hay que quitarla de ahí
+    #    para gestionarla nosotros.
+    
+    # Filtramos a un solo sector
+    df_base <- df_base %>% filter(sector_name == input$sector_series)
+    df_fijos <- df_fijos %>% filter(sector_name == input$sector_series)
+    
+    lista_geo <- df_base %>% 
+      filter(!geo %in% codigos_fijos) %>%
+      pull(full_name) %>%
+      unique()
+      
+    n_total   <- length(lista_geo)
+    
+    # b. Calculamos el total de páginas (10 variables + 2 fijos = 12 huecos)
+    plots_por_pagina <- 10  # <--- CAMBIADO A 10 para dejar hueco a los 2 fijos
+    
+    # Si no hay variables, al menos 1 página para mostrar los fijos
+    total_paginas <- if(n_total == 0) 1 else ceiling(n_total / plots_por_pagina)
+    
+    # c. Detectamos la página actual
+    pag_actual <- if (is.null(input$pagina_series)) 1 else as.numeric(input$pagina_series)
+    if (pag_actual > total_paginas) pag_actual <- 1 # Reset seguridad
+    
+    # d. Matemática de recorte (Slicing) SOLO de los variables
+    geo_seleccionados <- character(0)
+    
+    if (n_total > 0) {
+      indice_inicio <- (pag_actual - 1) * plots_por_pagina + 1
+      indice_fin    <- min(indice_inicio + plots_por_pagina - 1, n_total)
+      geo_seleccionados <- na.omit(lista_geo[indice_inicio:indice_fin])
+    }
+    
+    # e. Filtramos el dataframe de variables
+    df_variable_pag <- df_base %>%
+      filter(full_name %in% geo_seleccionados)
+    
+    # --- MODIFICACIÓN 3: UNIÓN FINAL ---
+    # Pegamos los Fijos + Los Variables de esta página
+    df_final <- bind_rows(df_fijos, df_variable_pag)
+    
+    # (Opcional) Forzamos el orden para que salgan primero en el gráfico
+    orden_visual <- unique(c(unique(df_fijos$full_name), geo_seleccionados))
+    df_final$full_name <- factor(df_final$full_name, levels = orden_visual)
+    
+    return(list(
+      datos = df_final, 
+      total_paginas = total_paginas,
+      pag_actual = pag_actual
+    ))
+  } 
+  
+  # --- RAMA B: COMPARAR SECTORES ---
+  else {
+    return(list(
+      datos = df_base,
+      total_paginas = 1,
+      pag_actual = 1
+    ))
+  }
+})
+```
 
 Column {.tabset}
 --------------------------------------------------
-```{r ST_paises-agrupaciones-paises}
-# España y Canarias
-referencia <- c("ES", "ES7")
+### Separados
 
-paises_principales <- c(
-  referencia,
-  "DE", # Alemania
-  "FR", # Francia
-  "IT", # Italia
-  "NL", # Países Bajos
-  "BE", # Bélgica
-  "SE", # Suecia
-  "PL", # Polonia
-  "AT", # Austria
-  "DK", # Dinamarca
-  "IE", # Irlanda
-  "PT", # Portugal
-  "CZ", # Chequia
-  "HU", # Hungría
-  "LU"  # Luxemburgo
-)
-
-paises_resto <- c(
-  referencia,
-  "BG", # Bulgaria
-  "HR", # Croacia
-  "CY", # Chipre
-  "EE", # Estonia
-  "EL", # Grecia
-  "LT", # Lituania
-  "LV", # Letonia
-  "FI", # Finlandia
-  "MT", # Malta
-  "SI", # Eslovenia
-  "RO", # Rumanía
-  "SK", # Eslovaquia
-  "RS", # Serbia
-  "MK"  # Macedonia del Norte
-)
-```
-
-### Países 1
-```{r ST_paises-paises1}
-# Países 1
+```{r grafica-separados-series}
 renderPlotly({
-  tb <- filtrado_series_temporales()
+  
+  req(filtrado_series_temporales())
+  tb <- filtrado_series_temporales()$datos
+  scale_y <- ifelse(input$scale_free_y==TRUE,"free_y","fixed")
     
-  tb %>% 
-    filter(geo %in% paises_principales) %>%
-    mutate(full_name = factor(full_name,  # Poner Canarias y España primero
-                       levels = c("Canarias", "Spain",
-                                  setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
-    ggplot(aes(year,y=values)) +
-    geom_line() +
-    facet_wrap(~full_name,scales = "free_y",ncol=4) +
-    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
-    labs(x="",y="")
+  if (input$ambito_series == "Regiones") {
+      
+    p <- tb %>% 
+      ggplot(aes(year, y=values)) +
+      geom_line() +
+      facet_wrap(~full_name, scales = scale_y, ncol=3) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
+      labs(x="", y="")
+    
+    ggplotly(p)
+      
+  } else {
+    req(input$seleccion_series)
+    
+    p <- tb %>% 
+      filter(geo == input$seleccion_series) %>%
+      ggplot(aes(year, y=values)) +
+      geom_line() +
+      facet_wrap(~sector_name, scales = scale_y, ncol=4) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
+      labs(x="", y="")
+      
+    ggplotly(p)
+      
+  }
 })
 ```
 
-### Países 2
-```{r ST_paises-paises2}
-# Países 2
-renderPlotly({
-  tb <- filtrado_series_temporales()
+### Superpuestos
+
+```{r widgets-superpuestos-series}
+div(
+  # Estilo del contenedor general (barra blanca superior)
+  style = "display: flex; align-items: center; gap: 40px; height: 80px; padding: 0 20px; background-color: white; position: relative; z-index: 50;", 
+  
+  # --- WIDGET 1: REFERENCIA ---
+  div(
+    # 'display: flex' aquí pone el TEXTO y el SELECT uno al lado del otro
+    style = "display: flex; align-items: center; gap: 10px;", 
     
-  tb %>% 
-    filter(geo %in% paises_resto) %>%
-    mutate(full_name = factor(full_name,  # Poner Canarias y España primero
-                       levels = c("Canarias", "Spain",
-                                  setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
-    ggplot(aes(year,y=values)) +
-    geom_line()+
-    facet_wrap(~full_name,scales = "free_y",ncol=4) +
-    theme(axis.text.x = element_text(angle = 45,hjust=1)) + 
-    labs(x="",y="")
+    tags$strong("Referencia:", style = "white-space: nowrap;"), # Etiqueta manual
+    
+    selectInput(
+      inputId = "ref_superpuestos",
+      label = NULL, # <--- ¡IMPORTANTE! Lo ponemos NULL para que no salga arriba
+      choices = c("España" = "ES", "Canarias" = "ES7", "Media UE" = "EU27_2020"),
+      selected = "EU27_2020",
+      width = "160px" # Ancho controlado del cajetín
+    )
+  ),
+  
+  # --- WIDGET 2: REGIONES (Múltiple) ---
+  div (
+    # 'flex-grow: 1' hace que este ocupe todo el espacio sobrante a la derecha
+    style = "display: flex; align-items: center; gap: 10px; flex-grow: 1;",
+    
+    tags$strong("Regiones:", style = "white-space: nowrap;"), # Etiqueta manual
+    
+    selectInput(
+      inputId = "seleccion_multi_superpuestos",
+      label = NULL, # <--- ¡IMPORTANTE! NULL aquí también
+      choices = NULL,
+      selected = c("Spain", "Italy", "France", "Germany"),
+      multiple = TRUE,
+      width = "100%" # Que ocupe todo el ancho disponible
+    )  
+  )
+)
+
+# --- Regiones según el NUTS seleccionado ---
+observe({
+  req(input$nuts_series, input$ambito_series)
+  
+  # 1. Filtramos las opciones disponibles según el NUTS seleccionado en el sidebar
+  df_opciones <- data %>%
+    select(full_name, geo, NUTS) %>%
+    distinct()
+
+  if (input$nuts_series == "CCAA") {
+    df_opciones <- df_opciones %>% filter(substr(geo, 1, 2) == "ES" & NUTS == 2)
+  } else {
+    df_opciones <- df_opciones %>% filter(NUTS == input$nuts_series)
+  }
+
+  # 2. Convertimos a vector
+  opciones_vector <- df_opciones %>%
+    arrange(full_name) %>%
+    tibble::deframe()
+  
+  # grep devuelve la posición donde encuentra el texto.
+  idx_spain    <- grep("Spain", names(opciones_vector), ignore.case = TRUE)
+  idx_canarias <- grep("Canarias", names(opciones_vector), ignore.case = TRUE)
+  
+  # Lógica de prioridad:
+  seleccion_defecto <- if (length(idx_spain) > 0) {
+      # Si existe Spain, cogemos su código
+      opciones_vector[idx_spain[1]] 
+  } else if (length(idx_canarias) > 0) {
+      # Si no, si existe Canarias, cogemos su código
+      opciones_vector[idx_canarias[1]]
+  } else {
+      # Si no hay ninguno, NULL (o opciones_vector[1] si quieres forzar el primero)
+      NULL 
+  }
+  
+  # 3. Actualizamos el selector múltiple
+  updateSelectInput(
+    session = session,
+    inputId = "seleccion_multi_superpuestos",
+    choices = opciones_vector,
+    selected = seleccion_defecto
+  )
 })
 ```
 
-### CCAA
-```{r ST_paises-ccaa}
-renderPlotly({
-  tb <- filtrado_series_temporales()
+```{r grafica-superpuestos-series}
+tags$style(HTML("
+  #contenedor_grafico_absoluto {
+    position: absolute;
+    top: 100px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+"))
+
+tags$div(
+  id = "contenedor_grafico_absoluto",
+  highcharter::highchartOutput("grafico_series_out", height = "100%")
+)
+
+output$grafico_series_out <- renderHighchart({
+  # 1. Validaciones básicas
+  req(
+    input$indicador_series, 
+    input$unidad_series, 
+    input$seleccion_multi_superpuestos,
+    input$ref_superpuestos # Aseguramos que haya referencia seleccionada
+  )
+  
+  # 2. Datos de las REGIONES SELECCIONADAS (Líneas de colores)
+  data_vars <- data %>%
+    filter(
+      item == input$indicador_series,
+      unit == input$unidad_series,
+      sector_name == input$sector_series,
+      geo %in% input$seleccion_multi_superpuestos, # Filtramos las regiones elegidas
+      !is.na(values)
+    ) %>%
+    arrange(year)
+
+  # 3. Datos de la REFERENCIA (Línea negra discontinua)
+  #    Aquí buscamos directamente el código (ES, ES70, EU27_2020, etc.)
+  data_ref <- data %>%
+    filter(
+      item == input$indicador_series,
+      unit == input$unidad_series,
+      sector_name == input$sector_series,
+      geo == input$ref_superpuestos, # Aquí entra "EU27_2020" directo
+      !is.na(values)
+    ) %>%
+    arrange(year)
+
+  # 4. CREACIÓN DEL GRÁFICO
+  #    Base: Las regiones variables
+  hc <- hchart(
+    data_vars, 
+    type = "line",
+    hcaes(x = year, y = values, group = full_name),
+    marker = list(enabled = TRUE, symbol = "circle", radius = 3)
+  )
+  
+  #    Añadimos la serie de Referencia (si existe)
+  if (nrow(data_ref) > 0) {
     
-  tb %>% 
-    filter((substr(geo, 1, 2) == "ES" & NUTS == 2) | geo == "ES") %>%
-    mutate(full_name = factor(full_name, # Poner Canarias y España primero
-                       levels = c("Canarias", "Spain",
-                                  setdiff(unique(full_name), c("Canarias", "Spain"))))) %>%
-    ggplot(aes(year, y = values)) +
-    geom_line() +
-    facet_wrap(~full_name, scales = "free_y", ncol = 4) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(x = "", y = "")
+    # Sacamos el nombre bonito para la leyenda (ej: "European Union - 27 countries")
+    nombre_ref <- head(unique(data_ref$full_name), 1)
+    
+    hc <- hc %>% 
+      hc_add_series(
+        data = data_ref,
+        type = "line", 
+        hcaes(x = year, y = values),
+        name = paste(nombre_ref, "(Ref)"), # Etiqueta en leyenda
+        dashStyle = "LongDash",   # Estilo discontinuo
+        color = "lightgray",
+        marker = list(enabled = FALSE),
+        zIndex = 10               # Para que se pinte siempre ENCIMA
+      )
+  }
+  hc
 })
-```
-
-### Comparativa países
-```{r ST_paises-input-comparativa-paises}
-selectInput(
-    inputId = "paises_seleccion",
-    label = "Selecciona países:",
-    choices = data %>% 
-        filter(NUTS==0) %>% 
-        pull(full_name) %>%
-        unique() %>%
-        sort(),
-    multiple = TRUE,
-    selected = "Spain",
-)
-```
-
-```{r ST_paises-comparativa-paises}
-div(renderHighchart({
-      req(input$paises_seleccion, input$indicador, input$unidad) # Validar que los inputs no estén vacíos
-      
-    # 1. Datos de las CCAA (del input)
-      data_paises <- filtrado_series_temporales() %>%
-        filter(
-          full_name %in% input$paises_seleccion,
-          item == input$indicador,
-          unit == input$unidad
-        ) %>%
-        arrange(year)
-        
-      # 2. Datos de EU27 (siempre)
-      data_eu <- filtrado_series_temporales() %>%
-        filter(
-          geo == "EU27_2020", 
-          item == input$indicador,
-          unit == input$unidad
-        ) %>%
-        arrange(year)
-    
-      # 3. Gráfico base (con CCAA) y añadir serie de España
-      hchart(
-        data_paises, # Gráfico base con las CCAA seleccionadas
-        type = "line",
-        hcaes(x = year, y = values, group = full_name),
-        marker = list(enabled = TRUE)
-      ) %>%
-      
-        hc_add_series(
-          data = data_eu,          
-          type = "line",
-          hcaes(x = year, y = values),
-          name = "Media UE (Referencia)",
-          dashStyle = "Dash",   
-          color = "lightgrey",  
-          marker = list(enabled = FALSE) 
-        ) %>%
-        hc_title(text = "") %>%
-        hc_xAxis(title = list(text = NULL)) %>%
-        hc_yAxis(title = list(text = NULL)) %>%
-        hc_legend(enabled = TRUE) %>% 
-        hc_chart(height = 500)
-    })
-)
-
-```
-
-### Comparativa CCAA
-```{r ST_paises-input-comparativa-ccaa}
-# Selector de comunidades
-selectInput(
-    inputId = "ccaa_seleccion",
-    label = "Selecciona comunidades:",
-    choices = data %>% 
-        filter((substr(geo, 1, 2) == "ES" & NUTS == 2)) %>% 
-        pull(full_name) %>%
-        unique() %>%
-        sort(),
-    multiple = TRUE,
-    selected = "Canarias",
-)
-```
-
-```{r ST_paises-comparativa-ccaa}
-div(renderHighchart({
-      req(input$ccaa_seleccion, input$indicador, input$unidad) # Validar que los inputs no estén vacíos
-      
-    # 1. Datos de las CCAA (del input)
-      data_ccaa <- filtrado_series_temporales() %>%
-        filter(
-          full_name %in% input$ccaa_seleccion, # Asumimos que "Spain" no viene aquí
-          item == input$indicador,
-          unit == input$unidad
-        ) %>%
-        arrange(year)
-        
-      # 2. Datos de España (siempre)
-      data_espana <- filtrado_series_temporales() %>%
-        filter(
-          full_name == "Spain", 
-          item == input$indicador,
-          unit == input$unidad
-        ) %>%
-        arrange(year)
-    
-      # 3. Gráfico base (con CCAA) y añadir serie de España
-      hchart(
-        data_ccaa, # Gráfico base con las CCAA seleccionadas
-        type = "line",
-        hcaes(x = year, y = values, group = full_name),
-        marker = list(enabled = TRUE)
-      ) %>%
-      
-        hc_add_series(
-          data = data_espana,          
-          type = "line",
-          hcaes(x = year, y = values),
-          name = "España (Referencia)",
-          dashStyle = "Dash",   
-          color = "lightgrey",  
-          marker = list(enabled = FALSE) 
-        ) %>%
-        hc_title(text = "") %>%
-        hc_xAxis(title = list(text = NULL)) %>%
-        hc_yAxis(title = list(text = NULL)) %>%
-        hc_legend(enabled = TRUE) %>% 
-        hc_chart(height = 500)
-    })
-)
 ```
 
 
@@ -2273,544 +2469,4 @@ output$grafico_pca_out <- highcharter::renderHighchart({
 ```
 
 
-Series temporales
-=================
-
-Column {.sidebar data-width=275}
---------------------------------------------------
-
-```{r widget-series}
-indicador_unidades <- list(
-    "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
-    "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
-    "HW_EMP"     = c("HW", "PCH_PRE")
-)
-
-# --- Nombres descriptivos para mostrar en el selector ---
-indicadores_labels <- c(
-    "Coste laboral medio / persona" = "D1_SAL_PER",
-    "Coste laboral / hora trabajada" = "D1_SAL_HW",
-    "Horas trabajadas en promedio" = "HW_EMP"
-)
-
-unidad_labels <- c(
-    "EUR" = "EUR",
-    "Moneda nacional" = "NAC",
-    "Porcentaje UE27" = "PC_EU27_2020_MEUR_CP",
-    "Var. porcentual" = "PCH_PRE",
-    "Horas anuales" = "HW"
-)
-
-radioButtons(
-    "ambito_series",
-    label = "Comparar por: ",
-    choices = c("Regiones", "Sectores laborales"),
-    selected = "Regiones"
-)
-
-# - Indicador -
-selectInput(
-    "indicador_series",
-    label = "Indicador:",
-    choices = indicadores_labels,
-    selected = "Coste laboral medio / persona"
-)
-  
-# - Unidad -
-selectInput(
-    "unidad_series",
-    label = "Unidad:",
-    choices = unidad_labels,
-    selected = "EUR"
-)
-
-# - Sector -
-conditionalPanel(
-  condition = "input.ambito_series == 'Regiones'",
-  selectInput(
-    inputId = "sector_series",
-    label = "Sector:",
-    choices = NULL, # Lo rellenamos dinámicamente desde el server
-    selected = NULL
-  )
-)
-
-# - NUTS -
-radioButtons(
-    "nuts_series",
-    label = "NUTS:",
-    choices = c(0:2, "CCAA"),
-    selected = 0,
-    inline = TRUE
-)
-
-conditionalPanel(
-  condition = "input.ambito_series == 'Sectores laborales'",
-  selectInput(
-    inputId = "seleccion_series",
-    label = "Selecciona región:",
-    choices = NULL, # Lo rellenamos desde el server
-    selected = NULL
-  )
-)
-
-renderUI({
-  # Dependemos de que los datos ya estén calculados para saber cuántas páginas hay
-  req(filtrado_series_temporales())
-  total_pags <- filtrado_series_temporales()$total_paginas
-  actual_page <- filtrado_series_temporales()$pag_actual
-  
-  # Si solo hay 1 página, no mostramos el selector para no ensuciar
-  # if (total_pags <= 1) return(NULL)
-  
-  # Input numérico simple con flechitas
-  numericInput(
-    inputId = "pagina_series",
-    label = paste0("Página (", actual_page, " de ", total_pags, "):"),
-    value = actual_page,
-    min = 1,
-    max = total_pags,
-    step = 1
-  )
-})
-
-checkboxInput(
-  "scale_free_y", "Escala eje Y libre", value = TRUE)
-
-# --- Para que no se puedan seleccionar unidades que no existen ---
-observe({
-    req(input$indicador_series) # Confirmamos que haya algo seleccionado
-    
-    # obtén el código del indicador seleccionado (por ejemplo "D1_SAL_HW")
-    indicador_sel <- input$indicador_series
-    
-    # busca las unidades válidas para ese indicador
-    unidades_validas <- indicador_unidades[[indicador_sel]]
-    
-    # filtra tus etiquetas de unidades (para mostrar solo las disponibles)
-    unidades_filtradas <- unidad_labels[unidad_labels %in% unidades_validas]
-    
-    # actualiza el selector de unidad con esas opciones
-    updateSelectInput(
-        inputId = "unidad_series",
-        choices = unidades_filtradas,
-        selected = unidades_filtradas[1]
-    )
-})
-
-# --- Solo el indicador disponible si comparamos por sectores ---
-observe({
-  req(input$ambito_series)
-  
-  if (input$ambito_series == "Sectores laborales") {
-    
-    # 1. Forzamos el indicador a Coste Laboral / Persona
-    updateSelectInput(
-      inputId = "indicador_series",
-      selected = "Coste laboral medio / persona" 
-    )
-  }
-})
-
-# --- Seleccionar region solo disponible para comparar por sectores --- 
-observe({
-  # Solo trabajamos si estamos en la pestaña correcta y hay un NUTS seleccionado
-  req(input$ambito_series, input$nuts_series)
-  
-  # Si no estamos en modo sectores, no gastamos recursos calculando
-  if (input$ambito_series != "Sectores laborales") return()
-
-  # 1. Filtramos las opciones disponibles según el NUTS
-  df_opciones <- data %>%
-    select(full_name, geo, NUTS) %>%
-    distinct() # Nos quedamos con los únicos para no procesar todo el dataset
-
-  if (input$nuts_series == "CCAA") {
-    # Caso especial CCAA: NUTS 2 y empieza por ES
-    df_opciones <- df_opciones %>% filter(NUTS == 2, grepl("^ES", geo))
-  } else {
-    # Caso normal (0, 1, 2)
-    df_opciones <- df_opciones %>% filter(NUTS == input$nuts_series)
-  }
-
-  # 2. Creamos el vector de opciones (Nombre = Codigo)
-  opciones_vector <- df_opciones %>%
-    arrange(full_name) %>%
-    tibble::deframe()
-
-  # 3. Lógica de Prioridad (Default)
-  #    Definimos a quién buscamos
-  target_name <- if (input$nuts_series == "0") "Spain" else "Canarias"
-  
-  #    Buscamos el código de ese target en las opciones disponibles
-  #    (Usamos grepl para ser flexibles si se llama "Canarias (ES)" o similar)
-  codigo_por_defecto <- df_opciones %>%
-    filter(grepl(target_name, full_name, ignore.case = TRUE)) %>%
-    pull(geo) %>%
-    head(1) # Por seguridad cogemos el primero si hubiera varios
-
-  # 4. Selección Final
-  #    Si encontramos al target, lo seleccionamos. Si no (ej: datos corruptos), el primero de la lista.
-  seleccion_final <- if (length(codigo_por_defecto) > 0) codigo_por_defecto else opciones_vector[1]
-
-  # 5. Actualizamos el input
-  updateSelectInput(
-    session = session, # Asegúrate de tener 'session' en tu función server(input, output, session)
-    inputId = "seleccion_series",
-    label = if(input$nuts_series == "0") "Selecciona país:" else "Selecciona región:",
-    choices = opciones_vector,
-    selected = seleccion_final
-  )
-})
-
-# --- Filtrar indicador con datos por sectores si vamos a comparar por ellos ---
-observe({
-  req(input$ambito_series)
-  
-  if (input$ambito_series == "Sectores laborales") {
-    
-    # OPCIÓN A: MODO SECTORES
-    # Le pasamos UNA sola opción en 'choices'. Así el usuario no puede elegir otra.
-    updateSelectInput(
-      inputId = "indicador_series",
-      choices = c("Coste laboral / hora trabajada" = "D1_SAL_HW"), 
-      selected = "D1_SAL_HW"
-    )
-    
-  } else {
-    
-    # OPCIÓN B: MODO REGIONES
-    # Le devolvemos la lista completa original 'indicadores_labels'
-    updateSelectInput(
-      inputId = "indicador_series",
-      choices = indicadores_labels, 
-      selected = indicadores_labels[2]
-    )
-    
-  }
-})
-
-# --- Solo sectores disponibles ---
-observe({
-  req(input$indicador_series, input$ambito_series)
-  
-  # Solo trabajamos si estamos en la pestaña Regiones
-  if (input$ambito_series == "Regiones") {
-    
-    # ¿Es el indicador que tiene sectores? (Usa el código interno, ej: "D1_SAL_HW")
-    if (input$indicador_series == "D1_SAL_HW") {
-      
-      # Opción A: Cargamos TODOS los sectores
-      lista_sectores <- c("Total actividades", sort(setdiff(unique(data$sector_name), "Total actividades")))
-      
-      updateSelectInput(
-        inputId = "sector_series",
-        choices = lista_sectores,
-        selected = "Total actividades" # O input$sector_series para mantener selección
-      )
-      
-    } else {
-      
-      # Opción B: Forzamos a SOLO Total Actividades
-      updateSelectInput(
-        inputId = "sector_series",
-        choices = c("Total actividades"),
-        selected = "Total actividades"
-      )
-    }
-  }
-})
-```
-
-
-```{r funcion-series}
-filtrado_series_temporales <- reactive({
-  
-  # 1. Validaciones básicas
-  req(
-    input$indicador_series, 
-    input$unidad_series, 
-    input$nuts_series
-  )
-  
-  # --- MODIFICACIÓN 1: Definimos los códigos que quieres fijos ---
-  codigos_fijos <- c("ES", "ES70") 
-
-  # 2. Filtro Base (Tus datos variables según el NUTS seleccionado)
-  df_base <- data %>%
-    filter(
-      item == input$indicador_series,
-      unit == input$unidad_series,
-      !is.na(values)
-    )
-  
-  if (input$nuts_series == "CCAA") {
-    
-    # Caso CCAA: Filtramos NUTS 2 Y solo regiones de España (empiezan por ES)
-    df_base <- df_base %>%
-      filter(substr(geo, 1, 2) == "ES" & NUTS == 2)
-      
-  } else {
-    
-    # Caso Normal (0, 1, 2): Filtramos tal cual
-    df_base <- df_base %>%
-      filter(NUTS == input$nuts_series)
-      
-  }
-  
-  # --- MODIFICACIÓN 2: Rescatamos datos de España y Canarias SIEMPRE (Ignorando el NUTS) ---
-  df_fijos <- data %>%
-    filter(
-      item == input$indicador_series,
-      unit == input$unidad_series,
-      geo %in% codigos_fijos,
-      !is.na(values)
-    )
-
-  # Si no hay datos en ninguno de los dos lados, paramos
-  if(nrow(df_base) == 0 && nrow(df_fijos) == 0) return(NULL)
-
-  # --- RAMA A: COMPARAR PAÍSES (PAGINACIÓN) ---
-  if (input$ambito_series == "Regiones") { 
-    
-    # a. Obtenemos la lista única de territorios VARIABLES (Quitamos los fijos para no duplicar)
-    #    Esto es importante: si seleccionas NUTS 0, España ya estaría en df_base, hay que quitarla de ahí
-    #    para gestionarla nosotros.
-    
-    # Filtramos a un solo sector
-    df_base <- df_base %>% filter(sector_name == input$sector_series)
-    df_fijos <- df_fijos %>% filter(sector_name == input$sector_series)
-    
-    lista_geo <- df_base %>% 
-      filter(!geo %in% codigos_fijos) %>%
-      pull(full_name) %>%
-      unique()
-      
-    n_total   <- length(lista_geo)
-    
-    # b. Calculamos el total de páginas (10 variables + 2 fijos = 12 huecos)
-    plots_por_pagina <- 10  # <--- CAMBIADO A 10 para dejar hueco a los 2 fijos
-    
-    # Si no hay variables, al menos 1 página para mostrar los fijos
-    total_paginas <- if(n_total == 0) 1 else ceiling(n_total / plots_por_pagina)
-    
-    # c. Detectamos la página actual
-    pag_actual <- if (is.null(input$pagina_series)) 1 else as.numeric(input$pagina_series)
-    if (pag_actual > total_paginas) pag_actual <- 1 # Reset seguridad
-    
-    # d. Matemática de recorte (Slicing) SOLO de los variables
-    geo_seleccionados <- character(0)
-    
-    if (n_total > 0) {
-      indice_inicio <- (pag_actual - 1) * plots_por_pagina + 1
-      indice_fin    <- min(indice_inicio + plots_por_pagina - 1, n_total)
-      geo_seleccionados <- na.omit(lista_geo[indice_inicio:indice_fin])
-    }
-    
-    # e. Filtramos el dataframe de variables
-    df_variable_pag <- df_base %>%
-      filter(full_name %in% geo_seleccionados)
-    
-    # --- MODIFICACIÓN 3: UNIÓN FINAL ---
-    # Pegamos los Fijos + Los Variables de esta página
-    df_final <- bind_rows(df_fijos, df_variable_pag)
-    
-    # (Opcional) Forzamos el orden para que salgan primero en el gráfico
-    orden_visual <- unique(c(unique(df_fijos$full_name), geo_seleccionados))
-    df_final$full_name <- factor(df_final$full_name, levels = orden_visual)
-    
-    return(list(
-      datos = df_final, 
-      total_paginas = total_paginas,
-      pag_actual = pag_actual
-    ))
-  } 
-  
-  # --- RAMA B: COMPARAR SECTORES ---
-  else {
-    return(list(
-      datos = df_base,
-      total_paginas = 1,
-      pag_actual = 1
-    ))
-  }
-})
-```
-
-
-Column {.tabset}
---------------------------------------------------
-### Separados
-
-```{r grafica-separados-series}
-renderPlotly({
-  
-  req(filtrado_series_temporales())
-  tb <- filtrado_series_temporales()$datos
-  scale_y <- ifelse(input$scale_free_y==TRUE,"free_y","fixed")
-    
-  if (input$ambito_series == "Regiones") {
-      
-    p <- tb %>% 
-      ggplot(aes(year, y=values)) +
-      geom_line() +
-      facet_wrap(~full_name, scales = scale_y, ncol=3) +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
-      labs(x="", y="")
-    
-    ggplotly(p)
-      
-  } else {
-    req(input$seleccion_series)
-    
-    p <- tb %>% 
-      filter(geo == input$seleccion_series) %>%
-      ggplot(aes(year, y=values)) +
-      geom_line() +
-      facet_wrap(~sector_name, scales = scale_y, ncol=4) +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
-      labs(x="", y="")
-      
-    ggplotly(p)
-      
-  }
-})
-```
-
-### Superpuestos
-
-```{r widgets-superpuestos-series}
-div(
-    style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
-    div(
-      selectInput(
-        inputId = "ref_superpuestos",
-        label = "Referencia (Línea discontinua):",
-        choices = c("España" = "ES", "Canarias" = "ES7", "Media UE" = "EU27_2020"),
-        selected = "EU27_2020"
-      )
-    ),
-    div (
-      selectInput(
-        inputId = "seleccion_multi_superpuestos",
-        label = "Regiones a comparar:",
-        choices = NULL,
-        selected = c("Spain", "Italy", "France", "Germany"),
-        multiple = TRUE,
-        width = "100%"
-      )  
-    )
-)
-
-# --- Regiones según el NUTS seleccionado ---
-observe({
-  req(input$nuts_series, input$ambito_series)
-  
-  # 1. Filtramos las opciones disponibles según el NUTS seleccionado en el sidebar
-  df_opciones <- data %>%
-    select(full_name, geo, NUTS) %>%
-    distinct()
-
-  if (input$nuts_series == "CCAA") {
-    df_opciones <- df_opciones %>% filter(substr(geo, 1, 2) == "ES" & NUTS == 2)
-  } else {
-    df_opciones <- df_opciones %>% filter(NUTS == input$nuts_series)
-  }
-
-  # 2. Convertimos a vector
-  opciones_vector <- df_opciones %>%
-    arrange(full_name) %>%
-    tibble::deframe()
-  
-  # grep devuelve la posición donde encuentra el texto.
-  idx_spain    <- grep("Spain", names(opciones_vector), ignore.case = TRUE)
-  idx_canarias <- grep("Canarias", names(opciones_vector), ignore.case = TRUE)
-  
-  # Lógica de prioridad:
-  seleccion_defecto <- if (length(idx_spain) > 0) {
-      # Si existe Spain, cogemos su código
-      opciones_vector[idx_spain[1]] 
-  } else if (length(idx_canarias) > 0) {
-      # Si no, si existe Canarias, cogemos su código
-      opciones_vector[idx_canarias[1]]
-  } else {
-      # Si no hay ninguno, NULL (o opciones_vector[1] si quieres forzar el primero)
-      NULL 
-  }
-  
-  # 3. Actualizamos el selector múltiple
-  updateSelectInput(
-    session = session,
-    inputId = "seleccion_multi_superpuestos",
-    choices = opciones_vector,
-    selected = seleccion_defecto
-  )
-})
-```
-
-```{r grafica-superpuestos-series}
-renderHighchart({
-  # 1. Validaciones básicas
-  req(
-    input$indicador_series, 
-    input$unidad_series, 
-    input$seleccion_multi_superpuestos,
-    input$ref_superpuestos # Aseguramos que haya referencia seleccionada
-  )
-  
-  # 2. Datos de las REGIONES SELECCIONADAS (Líneas de colores)
-  data_vars <- data %>%
-    filter(
-      item == input$indicador_series,
-      unit == input$unidad_series,
-      sector_name == input$sector_series,
-      geo %in% input$seleccion_multi_superpuestos, # Filtramos las regiones elegidas
-      !is.na(values)
-    ) %>%
-    arrange(year)
-
-  # 3. Datos de la REFERENCIA (Línea negra discontinua)
-  #    Aquí buscamos directamente el código (ES, ES70, EU27_2020, etc.)
-  data_ref <- data %>%
-    filter(
-      item == input$indicador_series,
-      unit == input$unidad_series,
-      sector_name == input$sector_series,
-      geo == input$ref_superpuestos, # Aquí entra "EU27_2020" directo
-      !is.na(values)
-    ) %>%
-    arrange(year)
-
-  # 4. CREACIÓN DEL GRÁFICO
-  #    Base: Las regiones variables
-  hc <- hchart(
-    data_vars, 
-    type = "line",
-    hcaes(x = year, y = values, group = full_name),
-    marker = list(enabled = TRUE, symbol = "circle", radius = 3)
-  )
-  
-  #    Añadimos la serie de Referencia (si existe)
-  if (nrow(data_ref) > 0) {
-    
-    # Sacamos el nombre bonito para la leyenda (ej: "European Union - 27 countries")
-    nombre_ref <- head(unique(data_ref$full_name), 1)
-    
-    hc <- hc %>% 
-      hc_add_series(
-        data = data_ref,
-        type = "line", 
-        hcaes(x = year, y = values),
-        name = paste(nombre_ref, "(Ref)"), # Etiqueta en leyenda
-        dashStyle = "LongDash",   # Estilo discontinuo
-        color = "lightgray",
-        marker = list(enabled = FALSE),
-        zIndex = 10               # Para que se pinte siempre ENCIMA
-      )
-  }
-  hc
-})
-```
 
