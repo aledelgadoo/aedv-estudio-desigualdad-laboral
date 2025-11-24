@@ -2279,7 +2279,7 @@ Series temporales
 Column {.sidebar data-width=275}
 --------------------------------------------------
 
-```{r}
+```{r widget-series}
 indicador_unidades <- list(
     "D1_SAL_PER" = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
     "D1_SAL_HW"  = c("EUR", "NAC", "PC_EU27_2020_MEUR_CP"),
@@ -2523,7 +2523,7 @@ observe({
 ```
 
 
-```{r funcion-series2}
+```{r funcion-series}
 filtrado_series_temporales <- reactive({
   
   # 1. Validaciones básicas
@@ -2642,7 +2642,7 @@ Column {.tabset}
 --------------------------------------------------
 ### Separados
 
-```{r}
+```{r grafica-separados-series}
 renderPlotly({
   
   req(filtrado_series_temporales())
@@ -2681,21 +2681,136 @@ renderPlotly({
 
 ### Superpuestos
 
+```{r widgets-superpuestos-series}
+div(
+    style = "display: flex; align-items: center; gap: 30px;", # Misma línea, separación 30px
+    div(
+      selectInput(
+        inputId = "ref_superpuestos",
+        label = "Referencia (Línea discontinua):",
+        choices = c("España" = "ES", "Canarias" = "ES7", "Media UE" = "EU27_2020"),
+        selected = "EU27_2020"
+      )
+    ),
+    div (
+      selectInput(
+        inputId = "seleccion_multi_superpuestos",
+        label = "Regiones a comparar:",
+        choices = NULL,
+        selected = c("Spain", "Italy", "France", "Germany"),
+        multiple = TRUE,
+        width = "100%"
+      )  
+    )
+)
 
+# --- Regiones según el NUTS seleccionado ---
+observe({
+  req(input$nuts_series, input$ambito_series)
+  
+  # 1. Filtramos las opciones disponibles según el NUTS seleccionado en el sidebar
+  df_opciones <- data %>%
+    select(full_name, geo, NUTS) %>%
+    distinct()
 
+  if (input$nuts_series == "CCAA") {
+    df_opciones <- df_opciones %>% filter(substr(geo, 1, 2) == "ES" & NUTS == 2)
+  } else {
+    df_opciones <- df_opciones %>% filter(NUTS == input$nuts_series)
+  }
 
+  # 2. Convertimos a vector
+  opciones_vector <- df_opciones %>%
+    arrange(full_name) %>%
+    tibble::deframe()
+  
+  # grep devuelve la posición donde encuentra el texto.
+  idx_spain    <- grep("Spain", names(opciones_vector), ignore.case = TRUE)
+  idx_canarias <- grep("Canarias", names(opciones_vector), ignore.case = TRUE)
+  
+  # Lógica de prioridad:
+  seleccion_defecto <- if (length(idx_spain) > 0) {
+      # Si existe Spain, cogemos su código
+      opciones_vector[idx_spain[1]] 
+  } else if (length(idx_canarias) > 0) {
+      # Si no, si existe Canarias, cogemos su código
+      opciones_vector[idx_canarias[1]]
+  } else {
+      # Si no hay ninguno, NULL (o opciones_vector[1] si quieres forzar el primero)
+      NULL 
+  }
+  
+  # 3. Actualizamos el selector múltiple
+  updateSelectInput(
+    session = session,
+    inputId = "seleccion_multi_superpuestos",
+    choices = opciones_vector,
+    selected = seleccion_defecto
+  )
+})
+```
 
+```{r grafica-superpuestos-series}
+renderHighchart({
+  # 1. Validaciones básicas
+  req(
+    input$indicador_series, 
+    input$unidad_series, 
+    input$seleccion_multi_superpuestos,
+    input$ref_superpuestos # Aseguramos que haya referencia seleccionada
+  )
+  
+  # 2. Datos de las REGIONES SELECCIONADAS (Líneas de colores)
+  data_vars <- data %>%
+    filter(
+      item == input$indicador_series,
+      unit == input$unidad_series,
+      sector_name == input$sector_series,
+      geo %in% input$seleccion_multi_superpuestos, # Filtramos las regiones elegidas
+      !is.na(values)
+    ) %>%
+    arrange(year)
 
+  # 3. Datos de la REFERENCIA (Línea negra discontinua)
+  #    Aquí buscamos directamente el código (ES, ES70, EU27_2020, etc.)
+  data_ref <- data %>%
+    filter(
+      item == input$indicador_series,
+      unit == input$unidad_series,
+      sector_name == input$sector_series,
+      geo == input$ref_superpuestos, # Aquí entra "EU27_2020" directo
+      !is.na(values)
+    ) %>%
+    arrange(year)
 
-
-
-
-
-
-
-
-
-
-
-
+  # 4. CREACIÓN DEL GRÁFICO
+  #    Base: Las regiones variables
+  hc <- hchart(
+    data_vars, 
+    type = "line",
+    hcaes(x = year, y = values, group = full_name),
+    marker = list(enabled = TRUE, symbol = "circle", radius = 3)
+  )
+  
+  #    Añadimos la serie de Referencia (si existe)
+  if (nrow(data_ref) > 0) {
+    
+    # Sacamos el nombre bonito para la leyenda (ej: "European Union - 27 countries")
+    nombre_ref <- head(unique(data_ref$full_name), 1)
+    
+    hc <- hc %>% 
+      hc_add_series(
+        data = data_ref,
+        type = "line", 
+        hcaes(x = year, y = values),
+        name = paste(nombre_ref, "(Ref)"), # Etiqueta en leyenda
+        dashStyle = "LongDash",   # Estilo discontinuo
+        color = "lightgray",
+        marker = list(enabled = FALSE),
+        zIndex = 10               # Para que se pinte siempre ENCIMA
+      )
+  }
+  hc
+})
+```
 
