@@ -4,10 +4,6 @@ author: "Alejandro Delgado Valera"
 date: "`r Sys.Date()`"
 output:
   html_document:
-    number_sections: true
-    toc: true
-    toc_depth: 3
-    toc_float: true
 ---
 
 <!--
@@ -137,7 +133,7 @@ margin: 2.5cm 2cm;
 knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
-  cache=T, # ponerlo a TRUE acelera la compilación pues solo recompila los chunks modificados. Es útil al escribir texto con mucho código que tarda tiempo en compilar. Puede fallar cuando unos chunks dependen de otros. En ese caso, o cuando hay errores que no entiendes, borra la carpeta auxiliar que se genera con la extensión "_cache" para obligar a recompilar todo. 
+  cache=F, # ponerlo a TRUE acelera la compilación pues solo recompila los chunks modificados. Es útil al escribir texto con mucho código que tarda tiempo en compilar. Puede fallar cuando unos chunks dependen de otros. En ese caso, o cuando hay errores que no entiendes, borra la carpeta auxiliar que se genera con la extensión "_cache" para obligar a recompilar todo. 
   echo=FALSE
 )
 ```
@@ -348,7 +344,7 @@ optimize.yeojohnson.R2 <- function(x, y, lambda_range = c(-1, 1.9)) {
 
 <!-- Todos los proyectos personales tienen que tener un cuadro de mandos (Tema 7 de la asignatura) cuya dirección es similar a la que sigue poniendo tu nº de usuario (en lugar de a2405) y el nombre del Rmd asociado. Los cuadros de mando se alojan en un servidor del DIS y solo se puede acceder a ellos a través de la red de la ULPGC o usando VPN -->
 
-[Cuadro de mandos](http://10.22.143.222:3838/sample-apps/a2405/Dashboard3.Rmd)  
+[Cuadro de mandos](http://10.22.143.222:3838/sample-apps/a2613/DashboardProyectoPersonalAEDV_AlejandroDelgadoValera.Rmd)  
 [Enlace al repositorio en GitHub](https://github.com/aledelgadoo/ProyectoPersonal_AEDV)
 
 
@@ -1297,11 +1293,11 @@ IMPORTANTE: La primera vez que ejecutes este chunk desde la consola de R se te p
 ```{r}
 gs4_deauth() 
 SeguimientoActividadesProyecto <- read_sheet('https://docs.google.com/spreadsheets/d/1W6VrcVWawxEk-b0zxrtVtOn-dtGl86BYEAWZ4qOYe0g/edit?usp=sharing') %>%
-  as_tibble()  
+  as_tibble()
 
 ```
 
-TOTAL HORAS TRABAJADAS EN EL PROYECTO : `r  round(sum(SeguimientoActividadesProyecto$MINUTES/60),digits=2)`
+TOTAL HORAS TRABAJADAS EN EL PROYECTO : `r  round(sum(SeguimientoActividadesProyecto$MINUTES/60, na.rm=TRUE),digits=2)`
 
 
 ```{r, fig.width=9}
@@ -1312,6 +1308,7 @@ p <- SeguimientoActividadesProyecto%>%
      HORAS=round(sum(MINUTES)/60,digits = 1)
    )%>%
   mutate(ACTIVITY=factor(ACTIVITY,levels=actividades)) %>% 
+  na.omit() %>% 
   ggplot(aes(ACTIVITY,HORAS)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label=HORAS),size=3,colour = "blue",nudge_y = 0.2)+ 
@@ -1322,6 +1319,23 @@ ggplotly(p)
 
 ```
 
+```{r,fig.width=9,cache=FALSE}
+p <- SeguimientoActividadesProyecto%>%
+  mutate(week=yearweek(as.Date(START))) %>% 
+  group_by(week)%>%
+   summarise(
+     HORAS=round(sum(MINUTES)/60,digits = 1)
+   )%>%
+  ggplot(aes(week,HORAS)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label=HORAS),size=3,colour = "blue",nudge_y = 0.2)+ 
+  theme(axis.text.x = element_text(angle = 45,hjust=1))+
+  labs(x="",y="HORAS TRABAJADAS",title = "TOTAL HORAS TRABAJADAS POR SEMANA")
+
+ggplotly(p)
+  
+ 
+```
 
 **DESGLOSE DETALLADO DE LAS SESIONES DE TRABAJO**
 ```{r}
@@ -1333,4 +1347,5 @@ SeguimientoActividadesProyecto%>%
     paging = FALSE     # Desactiva paginación si quieres solo scroll
   )
 )
+
 ```
