@@ -385,7 +385,7 @@ optimize.yeojohnson.R2 <- function(x, y, lambda_range = c(-1, 1.9)) {
 <!-- Hay que rellenar el fichero "ODS.xlsx" con nuestros datos. Si en ChatGPT hacemos la consulta "Relacionar "mi tema de proyecto" con ODS" nos saldrá un borrador de relaciones que podremos usar como base y  perfeccionar. 
 --> 
 
-```{r}
+```{r ods}
 tb <- read.xlsx("data/ODS.xlsx") %>%
   as_tibble()
 tb[is.na(tb)] <- ""
@@ -472,11 +472,16 @@ El análisis de los datos realizado para la validación del tema del proyecto pe
 ## Comprensión del negocio
 <!-- desarrollo de esta fase -->
 
-Para la búsqueda del dataset elegido finalmente para la realización de este proyecto, hemos llevado a cabo una serie de pasos.  
-<br>
-En primer lugar, a través del documento facilitado por el profesor, exploré y contrasté los posibles datasets que aparecían en la tabla dinámica que ofrecía aquellos datasets que cumplían los requisitos relacionados con la temporalidad de las observaciones. Tras consultar con chatgpt, centré mi busqueda en aquellos datasets que tenían un máximo de ≈1 mill. y mínimo 10 mil observaciones. Aquellos datasets que tenían un título que me llamara la atención, se los pasaba al chatgpt para que me diera una breve descripción del mismo. Cuando ya había seleccionado los suficientes, le pedí que hiciera un top con aquellos que considerara más adecuados para el proyecto a realizar, según el temario que se impartiría en la asignatura y que está registrado en el libro de la asignatura que previamente le pasé a este chatbot.  
-<br>
-Tras haber escrito un dataset previamente en la wiki para registrarlo, sin haber prestado mucha atención a todo las condiciones que este debía cumplir, terminé eligiendo uno que cumplía todos los requisitos expuestos en el documento proporcionado por el profesor. Una vez verificado esto, pasé al siguiente paso de comprensión de los datos elegidos.
+Para garantizar la idoneidad de los datos respecto a los objetivos de la asignatura y la capacidad de cómputo disponible, se estableció un protocolo de búsqueda y selección estructurado en tres fases:  
+
+#### Fase 1: Filtrado Cuantitativo y Dimensional  
+Partiendo del repositorio de fuentes oficiales proporcionado por la docencia, se aplicó un primer filtro basado en requisitos técnicos y dimensionales. Se priorizaron conjuntos de datos con una extensión temporal significativa (series temporales largas) y un volumen de observaciones manejable pero suficiente para el análisis profundo (rango objetivo entre 10 mil y 10 mill registros). Este criterio aseguró un equilibrio entre la riqueza de información y la viabilidad del procesamiento computacional.
+
+#### Fase 2: Evaluación Temática y Potencial Analítico  
+Sobre los datasets resultantes, se realizó una exploración cualitativa asistida por herramientas de Inteligencia Artificial (LLMs) para analizar rápidamente los metadatos y descripciones. El objetivo fue identificar temáticas con alto potencial narrativo y relevancia socioeconómica.Se cruzaron las características de los candidatos con los contenidos teóricos del manual de la asignatura (Introducción al Análisis de Datos y Visualización), buscando variables que permitieran aplicar las técnicas de visualización avanzad as (mapas, series temporales, comparativas categóricas) exigidas en el proyecto.
+
+#### Fase 3: Validación Normativa y Selección Definitiva  
+Tras la preselección de un primer candidato y su posterior descarte por no ajustarse estrictamente a la totalidad de los requisitos de la rúbrica (específicamente en la granularidad de las variables), se procedió a la elección final del dataset `nama_10r_2lp10`. Este conjunto de datos superó la validación final al cumplir con todos los criterios: estructura tidy, presencia de variables categóricas y numéricas, desglose geográfico (NUTS 2) y una serie temporal completa (1995-2023), permitiendo el análisis multinivel (Europa-España-Canarias) propuesto.
 
 ## Comprensión de los datos
 <!-- desarrollo de esta fase -->
@@ -793,7 +798,34 @@ data.fechas %>%
 ## Preparación de los datos
 <!-- desarrollo de esta fase -->
 
-Vamos a comenzar leyendo el dataset desde local y realizando una limpieza general de los datos innecesarios. Renombramos algunas variables, eliminamos columnas que no aportan información relevante y añadimos una columna con el nombre completo de las regiones a las que hace referencia la variable `geo`.
+### Procesado inicial de los datos
+
+El conjunto de datos original (`nama_10r_2lp10`) presentaba una estructura tidy pero requería una serie de transformaciones para garantizar su calidad y facilitar el análisis exploratorio. Se llevó a cabo un proceso de limpieza y enriquecimiento estructurado en las siguientes fases: 
+
+#### 1. Selección de Atributos y Reducción de Dimensionalidad:  
+Se eliminaron variables redundantes o carentes de varianza informativa. Concretamente, se descartó la columna `freq`, dado que presenta un valor único ("A") para todas las observaciones, indicando la periodicidad anual de la serie completa.  
+
+#### 2. Estandarización de la Nomenclatura:  
+Para mejorar la legibilidad del código y la manipulación de los datos, se renombraron las variables principales siguiendo un esquema semántico más claro:  
+
+- `nace_r2` $\rightarrow$ `sector`  
+- `na_item` $\rightarrow$ `item`  
+- `TIME_PERIOD` $\rightarrow$ `year`  
+
+#### 3. Enriquecimiento y Cruce de Datos:  
+Se integró información geográfica y descriptiva externa para dotar de contexto a los códigos del dataset original:  
+
+- *Información Geográfica:* Se realizó una unión con el dataset auxiliar (`urostac_real_nuts`). Esto permitió incorporar las columnas `NUTS` (nivel jerárquico) y `full_name` (nombre oficial de la región), claves para el análisis espacial.  
+- *Descriptores Sectoriales:* Se generó una variable derivada, `sector_name`, que recodifica los códigos técnicos NACE Rev. 2 (ej. "O-U") en descripciones en lenguaje natural (ej. "Adm. pública, educación y salud"), facilitando la interpretación visual de los gráficos.
+
+#### Estructura Final del Dataset: 
+Tras el procesado, el dataset resultante consta de las siguientes variables dimensionadas para el análisis:
+
+- Variables Geográficas: `geo` (Código), `NUTS` (Nivel 0, 1, 2), `full_name` (Etiqueta).  
+- Variables Temporales: `year` (Serie 1995-2023).  
+- Variables Categóricas: `sector` y `sector_name` (Rama de actividad).  
+- Variables Métricas: `item` (Indicador, *promedio anual*: Coste laboral por hora trabajada, Coste laboral por persona empleada, Horas trabajadas), `unit` (Unidad de medida) y `values` (Valor numérico). 
+<br>
 ```{r analisis-data-raw, results=F}
 data_raw <- read_csv('data/nama_10r_2lp10.csv') %>% 
     as_tibble()
@@ -833,8 +865,9 @@ data <- data_raw %>%
 
 data
 ```
+
 Una vez estructurados y limpiados los datos, exploraremos inicialmente las diferencias entre países según los indicadores disponibles en el dataset. Esto nos permitirá identificar patrones generales, contrastar la posición de España frente a otros países y preparar los datos para un análisis más detallado a nivel sectorial y regional.  
-<br>
+<br><br>
 
 En primer lugar, analizamos la evolución del coste laboral por hora trabajada en distintos países. Cada línea representa un país, mostrando tendencias de crecimiento o reducción a lo largo del tiempo, lo que nos permite situar a España en un contexto internacional.
 ```{r evolucion-coste-hora-paises}
