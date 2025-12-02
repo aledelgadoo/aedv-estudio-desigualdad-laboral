@@ -370,6 +370,54 @@ p <-  geoj %>%
   return(p)
 }
 
+MapaCoropléticoES <- function(
+ geoj, # objeto gráfico geojson con los contornos de las regiones
+ value, # vector de valores para colorear 
+ region_labels, # vector de etiquetas para los desplegables
+ legend_title # título de la leyenda 
+){
+vals <- value[!is.na(value)]
+
+pal <- colorNumeric(
+  palette = "YlOrRd",
+  domain  = vals
+)
+
+p <-  geoj %>%
+    leaflet() %>%  
+    setView(lng = -10, lat = 35.8, zoom = 5)  %>% 
+    addPolygons(
+        fillColor = ~pal(value),
+        weight = 1,
+        opacity = 1,
+        color = "#555555",
+        dashArray = "",
+        fillOpacity = 0.75,
+        highlightOptions = highlightOptions(
+            weight = 3,
+            color = "#333333",
+            dashArray = "",
+            fillOpacity = 0.8,
+            bringToFront = TRUE
+        ),
+      label = region_labels 
+    ) %>% 
+    addLegend("bottomleft", 
+      pal = pal, 
+      values = na.omit(value),
+      title = legend_title,
+      labFormat = function(type, cuts, p) {
+        n = length(cuts) 
+        x = (cuts[-n] + cuts[-1])/2
+        x = prettyNum(round(x, digits = 0), big.mark = " ")
+        as.character(x)
+      },
+ 
+      opacity = 1
+      )
+  return(p)
+}
+
 
 
 # CÁLCULO DE LA TRANSFORMACIÓN DE YEO–JOHNSON A PARTIR DE UN VECTOR Y UN VALOR DE lambda 
@@ -1052,22 +1100,7 @@ p <- tb %>%
 animate(p,fps = 3,end_pause = 30)
 ```
 
-```{r}
-tb <- data %>% 
-    filter(full_name %in% seleccion_paises, item=="HW_EMP", unit=="HW", year==2022)
-
-p <- tb %>% 
-  ggplot(aes(x=reorder(full_name, values), y=values,fill=full_name)) +
-  geom_bar(stat = "identity") + 
-  labs(x="", y="Horas trabajadas (promedio anual)") + 
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1)) +
-  theme(legend.position = "none")
-
-ggplotly(p)
-```
-
-
-```{r}
+```{r scatter}
 data_scatter <- data %>%
   # Filtramos solo Países (NUTS 0) y el total de la economía
   filter(full_name %in% seleccion_paises, sector == "TOTAL", year>=2000, year<2023) %>% 
@@ -1102,7 +1135,7 @@ p <- data_scatter %>%
   ), alpha = 0.7) +
   
   # Escalas y Títulos
-  scale_size(range = c(2, 15)) + # Ajustamos tamaño burbujas min/max
+  # scale_size(range = c(2, 15)) + # Ajustamos tamaño burbujas min/max
   labs(
     x = "Horas Trabajadas por Empleado (Año)",
     y = "Coste Laboral por Hora (€)",
@@ -1124,6 +1157,522 @@ ggplotly(p, tooltip = "text") %>%
   layout(title = list(text = "<b>Eficiencia vs Presencialismo:</b> Evolución Europea (2000-2022)"))
 ```
 
+```{r boxplot-sectores}
+p <- data %>%
+  # Filtramos países, el indicador de Salario por Persona y aseguramos Euros
+  filter(full_name %in% seleccion_paises, item == "D1_SAL_HW", unit == "EUR") %>%
+  
+  ggplot(aes(x = reorder(full_name,-values), y = values, fill = full_name)) +
+  
+  geom_boxplot() +
+  
+  # Rotamos los nombres del eje X para que se lean bien
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "none") +
+  
+  labs(x = "", y = "Coste por empleado (€)")
+
+ggplotly(p)
+```
+
+```{r mapa-calor-sectores-eu}
+tb <- data %>%
+    filter(item == "D1_SAL_HW", unit == "EUR", NUTS == 0, year >= 2018) %>%
+    group_by(full_name) %>%
+    summarise(mean_value = mean(values, na.rm = TRUE)) %>%
+    ungroup()
+
+# Calculamos el valor de Pareto
+pareto <- ParetoValue(tb$mean_value, 0.67) # Para quedarnos con 12 justo
+
+countries_pareto <- data %>%
+    filter(item == "D1_SAL_HW", unit == "EUR", NUTS == 0, year >= 2018) %>%
+    group_by(full_name) %>%
+    summarise(mean_value = mean(values, na.rm = TRUE)) %>%
+    ungroup() %>% 
+    filter(mean_value >= pareto) %>% 
+    pull(full_name)
+
+top_countries <- data %>% 
+    filter(item=="D1_SAL_HW", unit=="PC_EU27_2020_MEUR_CP", year>=2018, full_name %in% countries_pareto) %>% 
+    group_by(full_name, sector_name) %>%
+    summarise(mean_value = mean(values, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    filter(mean_value>=pareto) %>% 
+    filter(sector_name != "Total actividades")
+    
+
+p <- top_countries %>% 
+    # **AÑADE ESTA LÍNEA:** Excluye la fila donde el nombre del sector sea "Total actividades"
+
+    ggplot(aes(reorder(full_name, -mean_value), sector_name, 
+               # Renombramos aquí para el FILL, y también añadimos TEXT para el tooltip
+               fill = mean_value, 
+               text = paste("País:", full_name,
+                            "<br>Sector:", sector_name,
+                            "<br>Coste:", round(mean_value, 2), "€/Hora"))) +
+    
+    # También podemos simplificar estas dos líneas, ya que no vamos a resaltar nada
+    # geom_tile(aes(color = sector_name == "Total actividades"), linewidth = 0.75) +
+    # scale_color_manual(values = c("TRUE" = "black", "FALSE" = "grey80"), guide = "none") +
+
+    # Versión simplificada SIN borde negro condicional:
+    geom_tile() +
+    
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(x = "", y = "", title = "Coste laboral medio por sector y país (2018-23)",fill = "Valor medio") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(tooltip = "text")
+```
+
+```{r top-bottom-horas}
+# 1.1. Calcular la media semanal para TODOS los países
+tb <- data %>% 
+    filter(item == "HW_EMP", unit == "HW", NUTS == 0, year >= 2018) %>% 
+    group_by(full_name) %>% 
+    summarise(mean_hours = mean(values, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    mutate(mean_hours_week = mean_hours / 52.18) %>% # Horas por semana
+    select(full_name, mean_hours_week) %>% 
+    arrange(desc(mean_hours_week))
+
+# 1.2. Identificar el valor de España
+valor_espana <- tb %>%
+    filter(full_name == "Spain") %>%
+    pull(mean_hours_week)
+
+# 1.3. Seleccionar Top 10, Bottom 10, y asegurar España (si no está ya)
+tb_top <- head(tb, 10)
+tb_bottom <- tail(tb, 10)
+
+# Aseguramos que España esté incluida si no está en el Top/Bottom (aunque debería estar si son 20+ países)
+# Usamos bind_rows y distinct para tener 20 países + España si es extra.
+tb_combined <- bind_rows(tb_top, tb_bottom) %>%
+    distinct(full_name, .keep_all = TRUE) %>% # Eliminar duplicados si España estaba en el límite
+    # Añadimos una columna de color para España y el resto
+    mutate(group = if_else(full_name == "Spain", "España", "Resto")) %>%
+    # Ordenamos el factor para que el gráfico respete el orden de la tabla (Descendente)
+    mutate(full_name = factor(full_name, levels = rev(full_name[order(mean_hours_week)])))
+
+
+# --- 2. GENERACIÓN DEL GRÁFICO ÚNICO ---
+
+p_final <- tb_combined %>%
+    # x es el país (ordenado), y es el valor
+    ggplot(aes(x = full_name, y = mean_hours_week, fill = full_name, text = paste("País:", full_name, "<br>Horas:", round(mean_hours_week, 1)))) +
+    
+    geom_bar(stat = "identity") +
+    
+    # Añadimos la línea de referencia de España
+    geom_hline(yintercept = valor_espana, color = "red", linetype = "dashed", linewidth = 0.8) +
+    
+    # Invertimos el eje X y el Y, y pasamos las barras a horizontal
+    coord_flip() + 
+    
+    # Texto de referencia para la línea de España
+    annotate("text", 
+         x = 20,  # <--- Posición vertical de la etiqueta (el país más bajo es 1)
+         y = valor_espana + 2, 
+         label = "Spain", 
+         color = "red", 
+         size = 4) +
+    
+    # Temas y Etiquetas
+    labs(x = "", y = "Horas Trabajadas / Semana (Promedio)", 
+         title = "Distribución de la Carga Laboral Semanal (Top 10 y Bottom 10") +
+
+    theme(legend.position = "none") # Quitamos la leyenda de los colores
+
+# --- 3. RENDERIZADO INTERACTIVO ---
+linea_interactiva <- data.frame(
+  x_inicio = 0.5, # El inicio del eje categórico (barra 1)
+  x_fin = length(unique(tb_combined$full_name)) + 0.5, # El final del eje categórico
+  y_intercep = valor_espana,
+  tooltip_linea = paste("Referencia España:", round(valor_espana, 1), "Horas/Semana")
+)
+p_final <- p_final + 
+  geom_segment(data = linea_interactiva, 
+               # Mapeamos x/y a los valores y la etiqueta al 'text'
+               aes(x = x_inicio, xend = x_fin, 
+                   y = y_intercep, yend = y_intercep, 
+                   text = tooltip_linea), 
+               inherit.aes = FALSE, # ¡Importante! No hereda las aes de los países
+               color = "transparent", # Hacemos la línea invisible
+               linewidth = 100) # Damos grosor para que sea fácil pasar el ratón
+
+# Usamos ggplotly y especificamos que use el texto personalizado para los tooltips
+ggplotly(p_final, tooltip = "text")
+```
+
+```{r evolucion-sectores-españa}
+  data_vars <- data %>%
+    filter(
+      item == "D1_SAL_HW",
+      unit == "EUR",
+      geo == "ES",
+      sector != "TOTAL"
+    ) %>%
+    arrange(year)
+
+  # 4. CREACIÓN DEL GRÁFICO
+  #    Base: Las regiones variables
+  hc <- hchart(
+  data_vars, 
+  type = "line",
+  # CORRECCIÓN CLAVE AQUÍ ABAJO:
+  # Cambiamos group = full_name por group = sector_name (o nace_r2)
+  # para que dibuje una línea por cada sector, no una sola línea loca.
+  hcaes(x = year, y = values, group = sector_name), 
+  marker = list(enabled = TRUE, symbol = "circle", radius = 3)
+)
+  
+hc
+```
+
+```{r mapa-calor-sectores-CCAA}
+top_comunidades_ES <- data %>% 
+    filter(item=="D1_SAL_HW", unit=="EUR", year>=2018, substr(geo, 1, 2) == "ES" & NUTS==2) %>% 
+    group_by(full_name, sector_name) %>%
+    summarise(mean_value = mean(values, na.rm = TRUE)) %>% 
+    ungroup()
+    
+p <- top_comunidades_ES %>% 
+    # **AÑADE ESTA LÍNEA:** Excluye la fila donde el nombre del sector sea "Total actividades"
+
+    ggplot(aes(reorder(full_name, -mean_value), sector_name, 
+               # Renombramos aquí para el FILL, y también añadimos TEXT para el tooltip
+               fill = mean_value, 
+               text = paste("Comunidad_:", full_name,
+                            "<br>Sector:", sector_name,
+                            "<br>Coste:", round(mean_value, 2), "€/Hora"))) +
+    
+    # También podemos simplificar estas dos líneas, ya que no vamos a resaltar nada
+    # geom_tile(aes(color = sector_name == "Total actividades"), linewidth = 0.75) +
+    # scale_color_manual(values = c("TRUE" = "black", "FALSE" = "grey80"), guide = "none") +
+
+    # Versión simplificada SIN borde negro condicional:
+    geom_tile() +
+    
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(x = "", y = "", title = "Coste laboral medio por sector y CCAA (2018-23)",fill = "Valor medio") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(tooltip = "text")
+```
+
+```{r mapa-coropletico-costeES}
+geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
+geoj_esp.tb <- geoj_esp %>% as_tibble()
+
+tb <- geoj_esp.tb %>% 
+    left_join(
+        data %>% 
+        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="D1_SAL_PER", unit=="EUR", year==2023, sector=="TOTAL") %>% 
+        na.omit(),
+        join_by("NUTS_ID" == "geo")
+        )
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>","Coste laboral por persona empleada",
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
+```
+
+```{verbatim horas-trabajdas}
+tb <- data %>% 
+    filter(full_name %in% seleccion_paises, item=="HW_EMP", unit=="HW", year==2022)
+
+p <- tb %>% 
+  ggplot(aes(x=reorder(full_name, values), y=values,fill=full_name)) +
+  geom_bar(stat = "identity") + 
+  labs(x="", y="Horas trabajadas (promedio anual)") + 
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(legend.position = "none")
+
+ggplotly(p)
+```
+
+```{r dubmbell-plot}
+max_year <- max(data$year, na.rm = TRUE)
+
+df_dumbbell <- data %>%
+  filter(
+    full_name %in% c("Spain", "Canarias"),
+    item == "D1_SAL_HW",
+    unit == "EUR",
+    year == max_year, # Snapshot del último año
+    sector != "TOTAL" 
+  ) %>%
+  select(sector_name, full_name, values) %>%
+  drop_na()
+
+# 2. Generación del gráfico de mancuernas (Dumbbell Plot)
+p_dumbbell <- df_dumbbell %>%
+  
+  mutate(sector_name = fct_reorder(sector_name, values, .fun = mean, na.rm = TRUE)) %>%
+  
+  # 2.1. Mapeamos el color general
+  ggplot(aes(x = values, y = sector_name, color = full_name)) +
+  
+  # Línea que conecta los puntos (la 'mancuerna')
+  geom_line(aes(group = sector_name), color = "grey", linewidth = 1) +
+  
+  # Puntos (las 'pesas') - Aquí metemos el tooltip y ajustamos el tamaño
+  geom_point(
+    # AÑADIDO: Tooltip SÓLO en los puntos
+    aes(text = paste("Región:", full_name, 
+                     "<br>Sector:", sector_name,
+                     "<br>Coste/Hora:", round(values, 2), "€")), 
+    size = 2.5 # AJUSTE: Hacemos los puntos más pequeños (antes 4)
+  ) +
+  
+  # Configuración de color y leyenda
+  scale_color_manual(values = c("Canarias" = "red", "Spain" = "#1F77B4"), name = "Región") +
+  
+  # Etiquetas y Títulos
+  labs(
+    title = paste("Brecha Sectorial del Coste por Hora: España vs. Canarias (", max_year, ")"),
+    x = "Coste Laboral por Hora (€)",
+    y = "Sector Laboral"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# 3. Renderizado interactivo
+ggplotly(p_dumbbell, tooltip = "text")
+```
+
+```{r donut-sectores-es23}
+# --- 1. PREPARACIÓN Y FILTRADO DE DATOS ---
+
+tb_plotly <- data %>%
+  filter(
+    geo == "ES", 
+    item == "D1_SAL_HW", 
+    unit == "EUR", 
+    year == 2023, 
+    sector != "TOTAL"
+  ) %>%
+  group_by(sector_name) %>%
+  # Calculamos la suma total del Coste por Hora por sector para el porcentaje
+  summarise(total_value = sum(values, na.rm = TRUE)) %>% 
+  ungroup() %>%
+  drop_na()
+
+# --- 2. GENERACIÓN DEL GRÁFICO DINÁMICO (PLOTLY DONUT) ---
+
+p_donut_dinamico <- tb_plotly %>%
+  plotly::plot_ly(
+    labels = ~sector_name,
+    values = ~total_value,
+    textposition = 'inside',
+    # Configuración de texto y orientación (como en tu ejemplo)
+    textinfo = 'label+percent',
+    insidetextorientation = 'radial',
+    hoverinfo = 'label+percent+value' # Tooltip personalizado
+  ) %>%
+  
+  # Añadimos el agujero y quitamos la leyenda para dejar el gráfico limpio
+  add_pie(hole = 0.3) %>%
+  
+  layout(
+    title = "Distribución del Coste Laboral por Sector (España, 2023)",
+    showlegend = FALSE, # Quitamos la leyenda
+    # Aseguramos que el gráfico se muestre como círculo
+    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+  )
+
+ggplotly(p_donut_dinamico)
+```
+
+```{r variacion-salarios}
+df_variation <- data %>%
+  filter(full_name == "Spain", NUTS == 0, sector == "TOTAL", item == "D1_SAL_HW", unit == "EUR") %>%
+  arrange(year) %>%
+  group_by(full_name) %>%
+  # Cálculo de la variación porcentual interanual (Perfecto como lo tienes)
+  mutate(variation_pct = (values / lag(values) - 1) * 100) %>%
+  ungroup() %>%
+  drop_na() # Quitamos el NA del primer año
+
+# --- 2. GENERACIÓN DEL GRÁFICO INTERACTIVO (PLOTLY) ---
+p_variation_plotly <- df_variation %>%
+  plotly::plot_ly(
+    x = ~year, 
+    y = ~variation_pct, 
+    type = 'scatter', 
+    mode = 'lines+markers',
+    name = 'Variación % Anual',
+    line = list(color = '#1F77B4') # Color principal
+  ) %>%
+  
+  # Añadir línea de referencia en cero (para señalar picos y valles)
+  add_trace(
+    y = 0, 
+    x = ~year,
+    mode = 'lines',
+    line = list(color = 'red', dash = 'dash'),
+    name = 'Referencia 0%'
+  ) %>%
+  
+  # Configuración y Layout (Limpieza de ejes)
+  layout(
+    title = "Variación Anual % del Coste Laboral por Hora en España",
+    xaxis = list(title = "Año", tickmode = 'linear', dtick = 5), # Muestra años cada 5 para limpiar el eje
+    yaxis = list(title = "Variación Porcentual (%)"),
+    showlegend = TRUE 
+  )
+
+ggplotly(p_variation_plotly)
+```
+
+```{r top3sectores-canarias}
+# Filtrado de Canarias y ordenamiento
+tb <- data %>% 
+    filter(geo == "ES7", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector != "TOTAL") %>% 
+    arrange(values)
+
+top <- tb %>% tail(3)
+bottom <- tb %>% head(3)
+
+# Valor de referencia de España (media nacional)
+valor_referencia <- data %>% 
+    filter(geo == "ES", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector == "TOTAL") %>%
+    pull(values)
+
+# 2. COMBINACIÓN Y CLASIFICACIÓN DE SECTORES
+df_plot <- bind_rows(
+    top %>% mutate(Sector_Type = "Top 3 (Mejor Remunerado)"),
+    bottom %>% mutate(Sector_Type = "Bottom 3 (Peor Remunerado)")
+)
+
+# 3. GENERACIÓN DEL GRÁFICO (Barra horizontal con referencia)
+p_top_bottom <- df_plot %>%
+    ggplot(aes(x = reorder(sector_name, values), y = values, fill = Sector_Type)) +
+    
+    # Barras (coord_flip requiere hjust = -0.1 para texto fuera)
+    geom_bar(
+      stat = "identity", 
+      color = "black",
+      aes(text = paste("Sector:", sector_name, 
+                       "<br>Coste/Hora:", round(values, 2), "€"))
+    ) +
+    
+    # Línea de referencia de España
+    geom_hline(yintercept = valor_referencia, color = "red", linetype = "dashed", linewidth = 1) +
+    
+    # Anotación para la línea de España (colocada en el inicio del eje X)
+    annotate("text", 
+             x = 0.5, y = valor_referencia + 2, 
+             label = "Media Nacional", 
+             color = "red", hjust = -0.1, vjust = -1, size = 3.7) +
+    
+    # Temas y Labels
+    scale_fill_manual(values = c("Top 3 (Mejor Remunerado)" = "#1F77B4", "Bottom 3 (Peor Remunerado)" = "#FF7F0E")) +
+    labs(title = paste("Contraste Salarial Sectorial en Canarias (", 2023, ")"),
+         subtitle = "Comparación Top 3 y Bottom 3 vs. Media Nacional de Coste por Hora",
+         y = "Coste Laboral por Hora (€)",
+         x = "",
+         fill = "Remuneración del sector") +
+    theme(legend.position = "bottom", axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(p_top_bottom, tooltip = "text")
+
+
+    
+```
+
+```{r boxplot-sectores-NUTS1}
+p <- data %>%
+  # Filtramos países, el indicador de Salario por Persona y aseguramos Euros
+  filter(substr(geo, 1, 2) == "ES" & NUTS == 1, item == "D1_SAL_HW", unit == "EUR") %>%
+  
+  ggplot(aes(x = reorder(full_name,-values), y = values, fill = full_name)) +
+  
+  geom_boxplot() +
+  
+  # Rotamos los nombres del eje X para que se lean bien
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "none") +
+  
+  labs(x = "", y = "Coste por hora trabajada (€)")
+
+ggplotly(p)
+```
+
+```{r sectores-wrapped-ESIC}
+# --- 1. PREPARACIÓN DE DATOS BASE ---
+df_facet <- data %>%
+  filter(
+    # Filtramos por España y Canarias (NUTS 0 y NUTS 2)
+    (full_name %in% c("Spain") & NUTS == 0) | 
+    (full_name %in% c("Canarias") & NUTS == 2),
+    item == "D1_SAL_HW",
+    unit == "EUR",
+    # sector != "TOTAL" # Excluimos el total para ver los sectores individuales
+  ) %>%
+  # Renombrar Spain para que la leyenda se vea mejor
+  mutate(full_name = if_else(full_name == "Spain", "España", full_name)) %>%
+  drop_na(values)
+
+
+# --- 2. GENERACIÓN DEL GRÁFICO (FACET WRAP) ---
+p_facet_time_series <- df_facet %>%
+  ggplot(aes(x = year, y = values, color = full_name, group = full_name)) +
+  
+  geom_line(linewidth = 0.5,
+            aes(text = paste("Región:", full_name,
+                     "<br>Sector:", sector_name,
+                     "<br>Año:", year,
+                     "<br>Coste/Hora:", round(values, 2), "€"))) +
+  
+  # Dividir el gráfico por sector: scales="free_y" ajusta el eje Y a cada sector
+  facet_wrap(~sector_name, scales = "free_y") + 
+  
+  # Labels
+  labs(
+    title = "Evolución Sectorial del Coste Laboral por Hora: España vs. Canarias",
+    subtitle = paste0("Periodo: ", min(df_facet$year), " - ", max(df_facet$year)),
+    y = "Coste por Hora (€)",
+    x = "Año",
+    color = "Región"
+  ) +
+  
+  # Temas y Estilo
+  scale_color_manual(values = c("Canarias" = "red", "España" = "#1F77B4")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom",
+  )
+
+ggplotly(p_facet_time_series, tooltip = "text")
+```
+
+```{r mapa-coropletico-horasES}
+geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
+geoj_esp.tb <- geoj_esp %>% as_tibble()
+
+tb <- geoj_esp.tb %>% 
+    left_join(
+        data %>% 
+        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="HW_EMP", unit=="HW", year==2023, sector=="TOTAL") %>% 
+        na.omit(),
+        join_by("NUTS_ID" == "geo")
+        )
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>","Horas trabajadas anuales",
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
+```
 
 
 A continuación, examinamos los diez países con mayor y menor carga laboral promedio por empleado. Los valores reflejan horas efectivas trabajadas por semana, y la línea roja indica la posición de España para contextualizar su situación frente a estos países.
@@ -1325,11 +1874,87 @@ tb %>%
 
 ## Modelado
 <!-- desarrollo de esta fase -->
+```{r matriz-dispersion}
+data %>% 
+  filter(item=="D1_SAL_HW", unit=="EUR", substr(geo, 1, 2) == "ES" & NUTS == 2) %>%  
+  group_by(full_name, sector_name) %>%
+  summarise(values=mean(values)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = sector_name, values_from = values) %>%
+  na.omit() %>% 
+  select(-full_name) %>% 
+  cor(use = "complete.obs") %>% 
+  plot_correlation(show_values = TRUE) 
+```
+```{r regresion-lineal}
+# --- 1. PREPARACIÓN Y PIVOTADO DE DATOS ---
+
+# Filtramos los dos indicadores de interés y nos aseguramos de usar las unidades correctas
+tb_comparacion_estatica <- data %>%
+  filter(
+    item %in% c("D1_SAL_HW", "HW_EMP"),
+    unit %in% c("EUR", "HW"),
+    NUTS==0
+  ) %>%
+  
+  # Seleccionamos las columnas clave para el pivote
+  select(full_name, year, sector_name, item, values) %>%
+  
+  # Transformamos a formato ancho para que D1_SAL_HW (Eje Y) y HW_EMP (Eje X) sean columnas
+  pivot_wider(
+    names_from = item, 
+    values_from = values,
+    values_fn = mean # Usamos mean por si hay duplicados menores en el dataset
+  ) %>%
+  
+  # Limpiamos los NAs que impiden la comparación
+  drop_na(D1_SAL_HW, HW_EMP)
+
+
+# --- 2. GENERACIÓN DEL DIAGRAMA DE DISPERSIÓN ESTÁTICO ---
+
+# --- 2. GENERACIÓN DEL DIAGRAMA DE DISPERSIÓN ESTÁTICO CORREGIDO ---
+
+p_dispersion_estatica <- tb_comparacion_estatica %>%
+  
+  # 1. Quitamos la estética 'text' de aquí para que geom_smooth NO la herede
+  ggplot(aes(x = HW_EMP, y = D1_SAL_HW, color = full_name)) + 
+  
+  # 2. Añadimos la estética 'text' SÓLO a geom_point
+  geom_point(aes(text = paste("País:", full_name,
+                             "<br>Año:", year,
+                             "<br>Horas Trabajadas:", round(HW_EMP, 0),
+                             "<br>Coste por Hora:", round(D1_SAL_HW, 2), "€")),
+             alpha = 0.5) +
+  
+  # 3. geom_smooth ahora hereda SOLO x e y, por lo que se renderiza correctamente
+  geom_smooth(method = lm, se = FALSE, color = "#333333", linewidth = 0.8) +
+  
+  # Etiquetas y Títulos
+  labs(
+    x = "Horas Trabajadas por Empleado (HW)", 
+    y = "Coste Laboral por Hora (€)",
+    title = "Relación entre Horas Trabajadas y Coste por Hora (1995-2023)",
+    subtitle = "Cada punto representa una observación (Región/Sector/Año)"
+  ) +
+  
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Visualizar el gráfico. Plotly encontrará el canal 'text' en los puntos.
+ggplotly(p_dispersion_estatica, tooltip = "text")
+```
+
+
+
+
+
+
 En esta parte del análisis, nos centramos en estudiar la evolución temporal de las horas trabajadas en España y su remuneración por hora, para posteriormente aplicar modelos de predicción ARIMA que permitan estimar su posible comportamiento en los próximos años.  
 
 ### Análisis de las horas trabajadas
 Comenzamos observando la evolución de las horas trabajadas en España durante el periodo disponible. Destaca la caída registrada en 2020, resultado del impacto de la pandemia y de la reducción de las horas efectivas trabajadas por los ERTE y las restricciones laborales.
-```{verbatim evolucion-horas-españa-data, results=F}
+```{r evolucion-horas-españa-data, results=F}
 horas.españa <- data %>% 
     filter(geo == "ES", item=="HW_EMP", unit=="HW") %>% 
     select(year, values) %>% 
@@ -1338,14 +1963,14 @@ horas.españa <- data %>%
 
 horas.españa
 ```
-```{verbatim evolucion-horas-españa}
+```{r evolucion-horas-españa}
 horas.españa %>% 
     autoplot() +
     labs(title = "Evolución de las horas trabajadas anualmente en España", x="Año", y="Horas")
 ```
 
 Para ajustar el modelo ARIMA de horas trabajadas, omitimos el año 2020, ya que la anomalía causada por la pandemia distorsionaría los parámetros del modelo.
-```{verbatim evolucion-horas-españa-covid-data, results=FALSE}
+```{r evolucion-horas-españa-covid-data, results=FALSE}
 horas.españa.omit.covid <- horas.españa %>% 
     filter(year!=2020) %>%
     fill_gaps()
@@ -1355,7 +1980,7 @@ horas.españa.omit.covid
 ```
 
 A continuación, comparamos la evolución de España y Canarias, donde se aprecia que las horas trabajadas en Canarias son superiores a la media nacional, reflejando la particularidad de su mercado laboral y la mayor presencia de sectores con jornadas más largas.
-```{verbatim evolucion-horas-españa-canarias}
+```{r evolucion-horas-españa-canarias}
 comparacion.ES_IC.horas <- data %>% 
     filter(geo %in% c("ES", "ES7"), item=="HW_EMP", unit=="HW") %>% 
     select(year, geo, values) %>% 
@@ -1374,7 +1999,7 @@ comparacion.ES_IC.horas %>% rename(Región = geo) %>%
 ```
 
 España mantiene horas trabajadas superiores a la media europea, situándose en un nivel más alto en comparación con otros países de la UE.
-```{verbatim evolucion-horas-españa-europa}
+```{r evolucion-horas-españa-europa}
 comparacion.ES_UE.horas <- data %>% 
     filter(geo %in% c("ES", "EU27_2020"), item=="HW_EMP", unit=="HW") %>% 
     select(year, geo, values) %>% 
@@ -1389,30 +2014,30 @@ comparacion.ES_UE.horas %>% rename(Región = geo) %>%
 ```
 
 Con el modelo ARIMA aplicado a las horas trabajadas, se estima la evolución para los próximos cinco años. El modelo se ha ajustado omitiendo 2020, dado el impacto anómalo de la pandemia, y proyecta una ligera continuidad en la tendencia a la baja, aunque con cierta variabilidad en los valores futuros.
-```{verbatim evolucion-horas-españa-arima, results = F}
+```{r evolucion-horas-españa-arima, results = F}
 horas.españa.omit.covid.arima <- horas.españa.omit.covid %>% 
     model(ARIMA(values))
 ```
-```{verbatim descomposicion-horas-españa}
+```{r descomposicion-horas-españa}
 horas.españa.STL <- horas.españa %>% 
     model(STL(values,robust = TRUE)) %>% 
     components()
 
-horas.españa.STL %>% 
+p <- horas.españa.STL %>% 
     autoplot() +
     labs(x="Año")
+
+ggplotly(p)
 ```
 
-```{verbatim evolucion-horas-españa-prediccion}
+```{r evolucion-horas-españa-prediccion}
 horas.españa.omit.covid.prediccion <- horas.españa.omit.covid.arima %>%
      forecast(h="5 years")
 
-horas.españa.omit.covid.prediccion %>% 
-    autoplot(horas.españa) +
-    labs(title = "Horas trabajadas anuales en ES - Predicción futura", x = "Año", y = "Horas")
+GraficoDinamicoArima95CI(horas.españa, "year", "values", horas.españa.omit.covid.prediccion, "Título")
 ```
 
-```{verbatim real-vs-arima-horas}
+```{r real-vs-arima-horas}
 # Generamos el data frame con los valores reales y ajustados del modelo
 ajuste_horas <- horas.españa.omit.covid.arima %>% 
   augment()  # añade columnas .fitted y .resid
