@@ -121,6 +121,11 @@ border: 1px solid #e0e0e0;
 }
 
 
+.leaflet, .leaflet html-widget {
+    height: 480px !important;
+}
+
+
 /* === Márgenes de página === */
 @page {
 margin: 2.5cm 2cm;
@@ -148,11 +153,11 @@ library(zoo)
 library(MASS)
 library(flexdashboard)
 library(datasets)
-library(highcharter) 
+library(highcharter)
 library(fpp3)
 library(RColorBrewer)
-library(openxlsx)  
-library(leaflet)  
+library(openxlsx)
+library(leaflet)
 library(geojsonio)
 library(plotly)
 library(ggplot2)
@@ -160,6 +165,7 @@ library(tidyverse)
 library(readr)
 library(eurostat)
 library(gganimate)
+library(htmltools)
 
 # Cambiar la fuente de las gráficas
 theme_set(
@@ -387,7 +393,7 @@ pal <- colorNumeric(
 p <-  geoj %>%
     leaflet() %>%  
     addProviderTiles(providers$CartoDB.VoyagerNoLabels) %>%
-    setView(lng = -10, lat = 35.8, zoom = 5)  %>% 
+    setView(lng = -7, lat = 35.8, zoom = 5)  %>% 
     addPolygons(
         fillColor = ~pal(value),
         weight = 1,
@@ -404,7 +410,7 @@ p <-  geoj %>%
         ),
       label = region_labels 
     ) %>% 
-    addLegend("bottomleft", 
+    addLegend("topleft", 
       pal = pal, 
       values = na.omit(value),
       title = legend_title,
@@ -514,30 +520,62 @@ show_values = TRUE # flat para controlar si se imprimen los valores en las celda
 </center>
 
 # Introducción
-
-
 <!-- situar el tema en un contexto amplio, destacando su relevancia en la actualidad. Delimitar el problema que se aborda en ese contexto amplio --> 
+La economía europea se construyó sobre la promesa de la convergencia: la idea de que, con el tiempo y la integración de mercados, los niveles de vida y la riqueza de los estados miembros tenderían a igualarse. Sin embargo, tres décadas después, la realidad dibuja un mapa de velocidades divergentes. En este escenario, España, y muy particularmente la región ultraperiférica de Canarias, se enfrenta a una paradoja persistente: a pesar de los esfuerzos de modernización y la integración en el mercado común, la brecha salarial con el núcleo económico europeo no solo no se cierra, sino que en muchos aspectos amenaza con cronificarse.  
 
+La narrativa popular, y a menudo política, ha tendido a simplificar este fenómeno atribuyéndolo a factores culturales o individuales, sugiriendo que la baja remuneración en el sur de Europa es consecuencia de una menor "cultura del esfuerzo" o de una ineficiencia intrínseca del trabajador. Este proyecto nace para desafiar esa noción mediante el análisis riguroso de los datos.  
+
+La presente memoria aborda esta problemática desde una perspectiva de **Análisis Exploratorio de Datos y Visualización (AEDV)**, desentrañando la relación entre el coste laboral, las horas trabajadas y la estructura sectorial. El trabajo plantea que el determinante del salario no es la geografía ni el esfuerzo individual, sino la especialización productiva. A través de un viaje analítico que va de lo macro (Europa) a lo micro (Canarias), se busca demostrar que la estructura económica actúa como un "techo de cristal" que limita la generación de valor, independientemente de la intensidad del trabajo realizado.  
 
 ##  Estado actual
-
 <!-- Explicar conceptos claves relacionados con el tema que se aborda. Comentar estudios/resultados precedentes. Identificación de elementos/circunstancias que justifican la realización del estudio sobre este tema. Relevancia y oportunidad de abordar el tema.-->
+La discusión económica sobre la disparidad de riqueza en Europa gira tradicionalmente en torno a dos conceptos clave que fundamentan este estudio: la Productividad Laboral (valor añadido generado por unidad de trabajo) y el Coste Laboral Unitario (la relación entre el coste de la mano de obra y la productividad). Históricamente, la literatura económica ha señalado una brecha persistente entre el "Norte" y el "Sur" de Europa. Mientras que los países centrales han basado su crecimiento en el aumento de la productividad total de los factores (tecnología y capital humano), estudios precedentes sobre la economía española sugieren que su modelo de crecimiento ha sido extensivo, basado en la acumulación de factores (más horas, más empleo) pero con una eficiencia estancada.  
+
+Esta dinámica se ha visto agravada por dos hitos recientes que justifican la oportunidad de este análisis:  
+
+- Las secuelas de la crisis financiera (2008-2014): Que provocaron una devaluación salarial interna en España como mecanismo para recuperar competitividad.
+
+- El shock asimétrico del COVID-19 (2020): Que distorsionó las estadísticas de costes laborales al reducir drásticamente las horas trabajadas mientras se sostenían las rentas mediante mecanismos públicos (ERTEs), generando un "falso positivo" de productividad en los datos que requiere ser depurado y analizado.
+
+La relevancia de abordar este tema ahora reside en el contexto inflacionario actual. Con los precios al alza, entender si los bajos salarios en regiones como Canarias se deben a una baja productividad real o a una estructura sectorial ineficiente es crucial. La justificación del estudio es clara: existe una necesidad urgente de validar empíricamente si la "especialización turística" y de servicios de bajo valor añadido actúa como un lastre estructural que impide la convergencia real con Europa.
 
 ## Motivación
-
 <!-- Descripción de la motivación que te ha llevado a elegir este tema de trabajo que puede incluir intereses personales/sociales/profesionales --> 
+Aunque este proyecto nace en el contexto académico de la asignatura de Análisis Exploratorio de Datos y Visualización (AEDV), la elección de estos datasets responde a una inquietud vital como estudiante del Grado en Ciencia e Ingeniería de Datos.  
+
+La motivación principal es confrontar con datos una realidad que condiciona mi futuro inmediato: la narrativa generalizada de que, para prosperar en el sector tecnológico, es obligatorio emigrar a Madrid o al resto de Europa. He elegido analizar los costes laborales y la estructura sectorial para verificar empíricamente si esa "sentencia" es real. Necesito entender si la devaluación salarial en Canarias afecta también a perfiles de alta cualificación como el mío, o si es un problema exclusivo de otros sectores. En definitiva, este trabajo es una auditoría personal para descubrir si la estructura económica de las islas penaliza mi talento y me empuja inevitablemente a hacer las maletas.
 
 ## Objetivos
-
 <!-- Expresa de forma amplia y global el propósito principal del trabajo. Cuales son sus metas principales -->
+El propósito principal de este trabajo es determinar, mediante un análisis de datos cuantitativo y visual, las causas estructurales de la baja remuneración en España y Canarias. Se busca demostrar la hipótesis de que la brecha salarial no es consecuencia de una menor intensidad laboral (horas trabajadas), sino de una especialización productiva en sectores de bajo valor añadido que limita estructuralmente la generación de riqueza.  
+
+Para alcanzar esta meta global, se plantean los siguientes objetivos específicos:  
+
+1. Analizar la eficiencia a escala europea: Establecer la correlación entre coste laboral y horas trabajadas en la UE-27 para validar si existe una relación inversa entre presencialismo y productividad.  
+
+2. Evaluar la evolución temporal en España: Examinar la trayectoria de los costes y horas desde el año 2000 para identificar el impacto de las crisis y verificar si existe convergencia o divergencia con los estándares europeos.  
+
+3. Mapear la desigualdad regional: Visualizar la distribución geográfica de la riqueza y el esfuerzo en España para identificar patrones territoriales y aislar el comportamiento de las Comunidades Autónomas.  
+
+4. Identificar el determinante sectorial: Desglosar el coste laboral por sectores económicos para demostrar cómo la composición del tejido productivo (peso de la hostelería vs. servicios profesionales) condiciona el techo salarial de cada región.  
+
+5. Diagnosticar la brecha de Canarias: Cuantificar la diferencia salarial específica del archipiélago respecto a la media nacional y determinar en qué sectores se produce el mayor "desacople" de valor.  
 
 # Aportaciones del trabajo
 
 <!-- estas sección se suele escribir al final del trabajo --> 
 
 ## Principales aportaciones
-
 <!-- Análisis del significado e implicaciones de los resultados en el contexto del área de estudio. Nuevas perspectivas o enfoques. Actualización del conocimiento existente. Debe estar alineado con los objetivos. Comentar cuadro de mandos como aportación  -->
+Este trabajo aporta una revisión crítica y basada en datos de la narrativa económica tradicional sobre la desigualdad regional en España. Más allá de la limpieza y tratamiento dels dataset, las principales contribuciones al área de estudio son:  
+
+1. Refutación del mito "Horas vs. Riqueza": El estudio demuestra una correlación inversa entre esfuerzo y salario, aportando una nueva perspectiva: la baja renta en Canarias no se debe a la falta de intensidad laboral (presencialismo), sino a la baja capacidad estructural del modelo para generar valor.  
+
+2. Diagnóstico de la "Penalización Insular del Talento": Se actualiza el conocimiento sobre la brecha salarial al revelar que afecta desproporcionadamente a los sectores de alta cualificación. Un profesional científico/tecnológico sufre mayor depreciación salarial en las islas que un trabajador de servicios, evidenciando una barrera estructural que incentiva la fuga de cerebros.  
+
+3. Evidencia de Desacople Económico: Los análisis temporales contradicen las teorías de convergencia, mostrando que la brecha Canarias-España se ha ensanchado tras las crisis de 2008 y 2020.  
+
+4. Cuadro de Mandos (Dashboard) como herramienta: La principal aportación técnica es la transformación de datos dispersos (Eurostat/INE) en un Dashboard Interactivo. Esta herramienta permite superar el análisis estático, facilitando la exploración dinámica de las tendencias y democratizando el acceso a información económica compleja.  
 
 
 ## Alineamiento con los objetivos de desarrollo sostenible
@@ -573,8 +611,24 @@ tabla %>% column_spec(2, extra_css = "text-align: center;") %>%
 
 
 ## Herramientas empleadas
-
 <!-- mencionar y justificar para este trabajo el uso de R, RStudio y las librerías principales utilizadas. Mencionar también el servidor shiny del DIS para desplegar públicamente el cuadro de mandos    --> 
+El desarrollo técnico de este proyecto se fundamenta en el lenguaje **R** y el entorno **RStudio**. Esta plataforma ofrece grandes ventajas para el Análisis Exploratorio de Datos gracias a su potencia estadística y su capacidad nativa para el tratamiento de datos. Además, el uso de **R Markdown (.Rmd)** ha sido clave para integrar código, análisis y narrativa en un único flujo de trabajo, generando como resultado final una memoria en formato HTML totalmente reproducible.  
+
+Para la ejecución del proyecto, se han empleado las siguientes librerías:  
+
+- **Manipulación y Preparación de Datos**: El procesamiento se ha centralizado en el ecosistema `tidyverse`. La librería `dplyr` ha sido el motor principal para limpiar, transformar y calcular métricas complejas (como brechas salariales y costes sectoriales), apoyada en `readr` y `eurostat` para la ingesta eficiente de los datos brutos.  
+
+- **Visualización y Narrativa Visual**: Para construir la historia visual se ha combinado la gramática de `ggplot2` con librerías de interactividad:  
+
+    - `plotly` y `highcharter`: Para convertir gráficos estáticos en visualizaciones dinámicas (zoom, tooltips) que facilitan la exploración.  
+
+    - `leaflet` y `geojsonio`: Para la creación de los mapas coropléticos interactivos (Actos I y III).  
+
+    - `gganimate`: Para visualizar la evolución temporal de la eficiencia y los costes (Acto I).  
+
+- **Despliegue y Dashboarding**: La presentación final se estructura mediante flexdashboard y shinydashboard, creando un cuadro de mandos profesional y reactivo. Para su despliegue público, el archivo se aloja en el servidor Shiny del **Departamento de Ingeniería de Sistemas (DIS)** de la universidad, permitiendo su ejecución remota vía web sin necesidad de instalación local.
+
+- **Control de Versiones**: Finalmente, para garantizar la integridad del código y facilitar el desarrollo iterativo, se ha utilizado **Git** junto con **GitHub** como repositorio remoto. Esto no solo ha servido para el control de versiones, sino para dar visibilidad pública al código fuente del proyecto una vez finalizado.
 
 ## Metodología
 
@@ -984,8 +1038,8 @@ Tras el procesado, el dataset resultante consta de las siguientes variables dime
 - Variables Geográficas: `geo` (Código), `NUTS` (Nivel 0, 1, 2), `full_name` (Etiqueta).  
 - Variables Temporales: `year` (Serie 1995-2023).  
 - Variables Categóricas: `sector` y `sector_name` (Rama de actividad).  
-- Variables Métricas: `item` (Indicador, *promedio anual*: Coste laboral por hora trabajada, Coste laboral por persona empleada, Horas trabajadas), `unit` (Unidad de medida) y `values` (Valor numérico). 
-<br>
+- Variables Métricas: `item` (Indicador), `unit` (Unidad de medida) y `values` (Valor numérico). Es importante destacar que el Coste laboral por hora trabajada es el único indicador que ofrece granularidad completa por sector; el resto de métricas (Coste por persona y Horas trabajadas) se presentan únicamente como valores agregados (Total).. 
+
 ```{r analisis-data-raw, results=F}
 data_raw <- read_csv('data/nama_10r_2lp10.csv') %>% 
     as_tibble()
@@ -1035,18 +1089,20 @@ geoj1.tb <- geoj1 %>% as_tibble()
 geoj2.tb <- geoj2 %>% as_tibble()
 ```
 
-### 
-
-
-
-
-
-Una vez estructurados y limpiados los datos, exploraremos inicialmente las diferencias entre países según los indicadores disponibles en el dataset. Esto nos permitirá identificar patrones generales, contrastar la posición de España frente a otros países y preparar los datos para un análisis más detallado a nivel sectorial y regional.  
-<br><br>
-
-En primer lugar, analizamos la evolución del coste laboral por hora trabajada en distintos países. Cada línea representa un país, mostrando tendencias de crecimiento o reducción a lo largo del tiempo, lo que nos permite situar a España en un contexto internacional.
+<br>
 
 #### Introducción: La Paradoja Europea
+
+Tras completar la limpieza, normalización y enriquecimiento del dataset, dejamos atrás la ingeniería de datos para adentrarnos en el análisis exploratorio. Nuestro objetivo en esta primera fase no es solo describir qué pasa, sino entender por qué España ocupa su posición actual.  
+
+Para diagnosticar la situación salarial en Canarias y España, primero necesitamos elevar la mirada y observar el contexto macroeconómico. Europa actúa aquí como un espejo de contrastes: nos permite comparar nuestro desempeño no contra un ideal teórico, sino contra la realidad de nuestros vecinos.  
+
+La narrativa popular a menudo asocia la baja remuneración con una supuesta "falta de cultura del esfuerzo". Sin embargo, los datos sugieren una paradoja fundamental que será el hilo conductor de este capítulo: **en Europa, trabajar más horas no significa generar más riqueza; a menudo, significa lo contrario**.  
+
+A través de las siguientes visualizaciones, estableceremos la "Tesis de la Eficiencia": demostraremos que existe una correlación negativa entre el presencialismo (horas trabajadas) y la productividad (coste por hora), y ubicaremos a España en este tablero de juego antes de hacer zoom en sus regiones.  
+<br>
+
+Para comprender la posición actual de España, primero debemos analizar la inercia histórica. ¿Cómo han evolucionado los costes laborales en las últimas dos décadas?  
 
 ```{r evolucion-coste-hora-paises}
 seleccion_paises <- c("Austria", "Belgium", "Denmark", "Finland", "France", "Germany", "Ireland", "Italy", "Luxembourg", "Netherlands", "Spain", "Sweden")
@@ -1072,6 +1128,12 @@ p <- tb_top_evol %>% mutate(full_name = factor(full_name, levels=(unique(full_na
 ggplotly(p)
 ```
 
+Esta visualización desglosa la evolución del coste por hora trabajada (2000-2022) mediante una serie de gráficos facetados.  
+Lo primero que salta a la vista es una tendencia de crecimiento estructural unánime en toda Europa, pero los ejes verticales revelan rápidamente la trampa de la escala: el "techo" histórico de España (apenas superando los 25€) equivale al punto de partida de potencias como Dinamarca o Luxemburgo, confirmando que navegamos en carriles paralelos sin una convergencia real. Asimismo, prácticamente todas las gráficas exhiben la cicatriz del 2020, un pico artificial provocado por el desplome de horas durante la pandemia, y no por un aumento real de la productividad.
+
+<br>
+Si la gráfica anterior nos mostraba la velocidad de crecimiento, este mapa congela la imagen en 2022 para visualizar la distancia real en términos de riqueza y costes laborales por empleado.  
+
 ```{r mapa-coroplético}
 tb <- geoj0.tb %>% 
     left_join(
@@ -1090,6 +1152,95 @@ etiquetas <-paste(
 
 MapaCoroplético(geoj0, tb$values, etiquetas,"Valor (año 2022)")
 ```
+
+El gradiente de color revela inmediatamente una frontera económica nítida: un "núcleo duro" europeo (Escandinavia, Benelux, Alemania, Francia) teñido de tonos cálidos que indican altos costes salariales, frente a una periferia sur y este que se diluye en tonos amarillos. En este tablero, España se encuentra en una incómoda "tierra de nadie": nuestros costes son superiores a los de Europa del Este, lo que nos impide competir por mano de obra barata, pero seguimos lejos de los estándares del norte, impidiéndonos competir por alto valor añadido.  
+
+<br>
+El mapa confirma el síntoma: cobramos significativamente menos que nuestros vecinos del norte. Ante esta realidad, surge inevitablemente el prejuicio cultural y la pregunta del millón: ¿Cobramos menos porque trabajamos menos? Para validar o descartar este mito, necesitamos mirar las horas trabajadas en promedio por empleado.
+
+```{r top-bottom-horas}
+# 1.1. Calcular la media semanal para TODOS los países
+tb <- data %>% 
+    filter(item == "HW_EMP", unit == "HW", NUTS == 0, year >= 2018) %>% 
+    group_by(full_name) %>% 
+    summarise(mean_hours = mean(values, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    mutate(mean_hours_week = mean_hours / 52.18) %>% # Horas por semana
+    select(full_name, mean_hours_week) %>% 
+    arrange(desc(mean_hours_week))
+
+# 1.2. Identificar el valor de España
+valor_espana <- tb %>%
+    filter(full_name == "Spain") %>%
+    pull(mean_hours_week)
+
+# 1.3. Seleccionar Top 10, Bottom 10, y asegurar España (si no está ya)
+tb_top <- head(tb, 5)
+tb_bottom <- tail(tb, 5)
+
+# Aseguramos que España esté incluida si no está en el Top/Bottom (aunque debería estar si son 20+ países)
+# Usamos bind_rows y distinct para tener 20 países + España si es extra.
+tb_combined <- bind_rows(tb_top, tb_bottom) %>%
+    distinct(full_name, .keep_all = TRUE) %>% # Eliminar duplicados si España estaba en el límite
+    # Añadimos una columna de color para España y el resto
+    mutate(group = if_else(full_name == "Spain", "España", "Resto")) %>%
+    # Ordenamos el factor para que el gráfico respete el orden de la tabla (Descendente)
+    mutate(full_name = factor(full_name, levels = rev(full_name[order(mean_hours_week)])))
+
+
+# --- 2. GENERACIÓN DEL GRÁFICO ÚNICO ---
+
+p_final <- tb_combined %>%
+    # x es el país (ordenado), y es el valor
+    ggplot(aes(x = full_name, y = mean_hours_week, fill = full_name, text = paste("País:", full_name, "<br>Horas:", round(mean_hours_week, 1)))) +
+    
+    geom_bar(stat = "identity") +
+    
+    # Añadimos la línea de referencia de España
+    geom_hline(yintercept = valor_espana, color = "red", linetype = "dashed", linewidth = 0.8) +
+    
+    # Invertimos el eje X y el Y, y pasamos las barras a horizontal
+    coord_flip() + 
+    
+    # Texto de referencia para la línea de España
+    annotate("text", 
+         x = 9.5,  # <--- Posición vertical de la etiqueta (el país más bajo es 1)
+         y = valor_espana + 2, 
+         label = "Spain", 
+         color = "red", 
+         size = 4) +
+    
+    # Temas y Etiquetas
+    labs(x = "", y = "Horas Trabajadas / Semana (Promedio 2018-23)", 
+         title = "Distribución de la Carga Laboral Semanal (Top/Bottom 5)") +
+
+    theme(legend.position = "none") # Quitamos la leyenda de los colores
+
+# --- 3. RENDERIZADO INTERACTIVO ---
+linea_interactiva <- data.frame(
+  x_inicio = 0.5, # El inicio del eje categórico (barra 1)
+  x_fin = length(unique(tb_combined$full_name)) + 0.5, # El final del eje categórico
+  y_intercep = valor_espana,
+  tooltip_linea = paste("Referencia España:", round(valor_espana, 1), "Horas/Semana")
+)
+p_final <- p_final + 
+  geom_segment(data = linea_interactiva, 
+               # Mapeamos x/y a los valores y la etiqueta al 'text'
+               aes(x = x_inicio, xend = x_fin, 
+                   y = y_intercep, yend = y_intercep, 
+                   text = tooltip_linea), 
+               inherit.aes = FALSE, # ¡Importante! No hereda las aes de los países
+               color = "transparent", # Hacemos la línea invisible
+               linewidth = 100) # Damos grosor para que sea fácil pasar el ratón
+
+# Usamos ggplotly y especificamos que use el texto personalizado para los tooltips
+ggplotly(p_final, tooltip = "text")
+```
+
+Al analizar la carga laboral semanal promedio, los datos desmontan radicalmente el estereotipo de la "pereza del sur". El gráfico de barras ordena a los países por horas trabajadas y el resultado es contraintuitivo: las economías más ricas y productivas (Alemania, Dinamarca, Países Bajos) ocupan la parte superior del gráfico con las jornadas más cortas, rondando las 26-28 horas semanales promedio. Por el contrario, los países con menores salarios (Grecia, Polonia, Croacia) presentan las jornadas más extensas, rozando las 40 horas. España, marcada por la línea roja discontinua, se sitúa por encima de la media europea en presencialismo, con una media en los últimos 5 años de 31.5 horas semanales. La conclusión es lapidaria: el esfuerzo en horas no garantiza la riqueza; de hecho, en Europa, parece correlacionar con lo contrario.  
+
+<br>
+Tenemos dos piezas del puzle que parecen contradictorias: los países ricos trabajan menos horas, y los países que trabajan más horas son más pobres. ¿Qué ocurre si cruzamos estas dos variables en un solo gráfico para ver su interacción directa?
 
 ```{r scatter}
 data_scatter <- data %>%
@@ -1148,259 +1299,15 @@ ggplotly(p, tooltip = "text") %>%
   layout(title = list(text = "<b>Eficiencia vs Presencialismo:</b> Evolución Europea (2000-2022)"))
 ```
 
+Esta visualización es la piedra angular del capítulo. Al cruzar el coste laboral por hora (eje Y) con las horas trabajadas por empleado al año (eje X), emerge una clara correlación negativa: los países se alinean en una pendiente descendente. Las naciones más eficientes, como Luxemburgo o Dinamarca, se agrupan en la esquina superior izquierda (alto valor, pocas horas), mientras que a medida que nos desplazamos hacia la derecha (más horas), el valor generado cae. España (la esfera morada en la zona inferior) queda relegada al cuadrante de "baja eficiencia": muchas horas de trabajo para un retorno por hora bajo. Además, la animación temporal revela cómo el COVID-19 provocó un salto generalizado hacia la izquierda en 2020, una anomalía de reducción forzosa de horas que no debe confundirse con un aumento estructural de la productividad.  
+
+<br>
+Ya hemos demostrado que el problema no es la cantidad de trabajo, sino el valor que generamos en ese tiempo. Pero, ¿es este bajo coste un problema generalizado en toda la economía o hay sectores que se salvan?
+
 ```{r boxplot-sectores}
 p <- data %>%
   # Filtramos países, el indicador de Salario por Persona y aseguramos Euros
   filter(full_name %in% seleccion_paises, item == "D1_SAL_HW", unit == "EUR") %>%
-  
-  ggplot(aes(x = reorder(full_name,-values), y = values, fill = full_name)) +
-  
-  geom_boxplot() +
-  
-  # Rotamos los nombres del eje X para que se lean bien
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "none") +
-  
-  labs(x = "", y = "Coste por empleado (€)")
-
-ggplotly(p)
-```
-
-```{r top-bottom-horas}
-# 1.1. Calcular la media semanal para TODOS los países
-tb <- data %>% 
-    filter(item == "HW_EMP", unit == "HW", NUTS == 0, year >= 2018) %>% 
-    group_by(full_name) %>% 
-    summarise(mean_hours = mean(values, na.rm = TRUE)) %>% 
-    ungroup() %>% 
-    mutate(mean_hours_week = mean_hours / 52.18) %>% # Horas por semana
-    select(full_name, mean_hours_week) %>% 
-    arrange(desc(mean_hours_week))
-
-# 1.2. Identificar el valor de España
-valor_espana <- tb %>%
-    filter(full_name == "Spain") %>%
-    pull(mean_hours_week)
-
-# 1.3. Seleccionar Top 10, Bottom 10, y asegurar España (si no está ya)
-tb_top <- head(tb, 10)
-tb_bottom <- tail(tb, 10)
-
-# Aseguramos que España esté incluida si no está en el Top/Bottom (aunque debería estar si son 20+ países)
-# Usamos bind_rows y distinct para tener 20 países + España si es extra.
-tb_combined <- bind_rows(tb_top, tb_bottom) %>%
-    distinct(full_name, .keep_all = TRUE) %>% # Eliminar duplicados si España estaba en el límite
-    # Añadimos una columna de color para España y el resto
-    mutate(group = if_else(full_name == "Spain", "España", "Resto")) %>%
-    # Ordenamos el factor para que el gráfico respete el orden de la tabla (Descendente)
-    mutate(full_name = factor(full_name, levels = rev(full_name[order(mean_hours_week)])))
-
-
-# --- 2. GENERACIÓN DEL GRÁFICO ÚNICO ---
-
-p_final <- tb_combined %>%
-    # x es el país (ordenado), y es el valor
-    ggplot(aes(x = full_name, y = mean_hours_week, fill = full_name, text = paste("País:", full_name, "<br>Horas:", round(mean_hours_week, 1)))) +
-    
-    geom_bar(stat = "identity") +
-    
-    # Añadimos la línea de referencia de España
-    geom_hline(yintercept = valor_espana, color = "red", linetype = "dashed", linewidth = 0.8) +
-    
-    # Invertimos el eje X y el Y, y pasamos las barras a horizontal
-    coord_flip() + 
-    
-    # Texto de referencia para la línea de España
-    annotate("text", 
-         x = 20,  # <--- Posición vertical de la etiqueta (el país más bajo es 1)
-         y = valor_espana + 2, 
-         label = "Spain", 
-         color = "red", 
-         size = 4) +
-    
-    # Temas y Etiquetas
-    labs(x = "", y = "Horas Trabajadas / Semana (Promedio)", 
-         title = "Distribución de la Carga Laboral Semanal (Top 10 y Bottom 10") +
-
-    theme(legend.position = "none") # Quitamos la leyenda de los colores
-
-# --- 3. RENDERIZADO INTERACTIVO ---
-linea_interactiva <- data.frame(
-  x_inicio = 0.5, # El inicio del eje categórico (barra 1)
-  x_fin = length(unique(tb_combined$full_name)) + 0.5, # El final del eje categórico
-  y_intercep = valor_espana,
-  tooltip_linea = paste("Referencia España:", round(valor_espana, 1), "Horas/Semana")
-)
-p_final <- p_final + 
-  geom_segment(data = linea_interactiva, 
-               # Mapeamos x/y a los valores y la etiqueta al 'text'
-               aes(x = x_inicio, xend = x_fin, 
-                   y = y_intercep, yend = y_intercep, 
-                   text = tooltip_linea), 
-               inherit.aes = FALSE, # ¡Importante! No hereda las aes de los países
-               color = "transparent", # Hacemos la línea invisible
-               linewidth = 100) # Damos grosor para que sea fácil pasar el ratón
-
-# Usamos ggplotly y especificamos que use el texto personalizado para los tooltips
-ggplotly(p_final, tooltip = "text")
-```
-
-#### Crisis y Convergencia: Trayectoria España
-
-```{r direccion-evolucion}
-df_snail <- data %>%
-  filter(
-    full_name == "Spain", 
-    NUTS == 0,
-    sector == "TOTAL", # Análisis agregado nacional
-    item %in% c("D1_SAL_HW", "HW_EMP"),
-    unit %in% c("EUR", "HW")
-  ) %>%
-  select(year, full_name, item, values) %>%
-  
-  # Pivotar a formato ancho para que los indicadores sean columnas
-  pivot_wider(names_from = item, values_from = values) %>%
-  drop_na(D1_SAL_HW, HW_EMP) %>%
-  arrange(year) # Esencial: ordena por año para que la línea siga la secuencia
-
-
-# --- 2. GENERACIÓN DEL GRÁFICO (Connected Scatter Plot) ---
-p_snail <- df_snail %>%
-  # Mapeamos el color y el label al año
-  ggplot(aes(x = HW_EMP, y = D1_SAL_HW, color = year, group = 1,
-             text = paste("Año:", year,
-                          "<br>Horas:", round(HW_EMP, 0),
-                          "<br>Coste/Hora:", round(D1_SAL_HW, 2), "€"))) +
-  
-  # 2.1. El camino que conecta los años cronológicamente
-  geom_path(color = "gray", linewidth = 0.8) +
-  
-  # 2.2. Los puntos (las paradas en cada año)
-  geom_point(size = 2) +
-  
-  # Labels
-  labs(
-    title = "Trayectoria de la Eficiencia Laboral en España (1995-2023)",
-    subtitle = "Horas Trabajadas (Eje X) vs. Coste Laboral por Hora (Eje Y)",
-    x = "Horas Trabajadas Anuales por Empleado",
-    y = "Coste Laboral por Hora (€)",
-    color = "Año"
-  ) +
-  
-  # Tema y Escala de Color
-  scale_color_viridis_c() + # Escala de color que va cambiando con el tiempo
-  theme(legend.position = "none")
-
-# 3. Interactividad (para ver los tooltips al pasar el ratón)
-ggplotly(p_snail, tooltip = "text")
-```
-
-```{r evolucion-sectores-españa}
-  data_vars <- data %>%
-    filter(
-      item == "D1_SAL_HW",
-      unit == "EUR",
-      geo == "ES",
-      sector != "TOTAL"
-    ) %>%
-    arrange(year)
-
-  # 4. CREACIÓN DEL GRÁFICO
-  #    Base: Las regiones variables
-  hc <- hchart(
-  data_vars, 
-  type = "line",
-  # CORRECCIÓN CLAVE AQUÍ ABAJO:
-  # Cambiamos group = full_name por group = sector_name (o nace_r2)
-  # para que dibuje una línea por cada sector, no una sola línea loca.
-  hcaes(x = year, y = values, group = sector_name), 
-  marker = list(enabled = TRUE, symbol = "circle", radius = 3)
-)
-  
-hc
-```
-
-```{r variacion-salarios}
-df_variation <- data %>%
-  filter(full_name == "Spain", NUTS == 0, sector == "TOTAL", item == "D1_SAL_PER", unit == "EUR") %>%
-  arrange(year) %>%
-  group_by(full_name) %>%
-  # Cálculo de la variación porcentual interanual (Perfecto como lo tienes)
-  mutate(variation_pct = (values / lag(values) - 1) * 100) %>%
-  ungroup() %>%
-  drop_na() # Quitamos el NA del primer año
-
-# --- 2. GENERACIÓN DEL GRÁFICO INTERACTIVO (PLOTLY) ---
-p_variation_plotly <- df_variation %>%
-  plotly::plot_ly(
-    x = ~year, 
-    y = ~variation_pct, 
-    type = 'scatter', 
-    mode = 'lines+markers',
-    name = 'Variación % Anual',
-    line = list(color = '#1F77B4')
-  ) %>%
-  
-  # Configuración y Layout (Limpieza de ejes)
-  layout(
-    title = "Variación Anual % del Coste Laboral por persona empleada en España",
-    xaxis = list(title = "Año", tickmode = 'linear', dtick = 5), # Muestra años cada 5 para limpiar el eje
-    yaxis = list(title = "Variación Porcentual (%)"),
-    showlegend = FALSE
-  )
-
-ggplotly(p_variation_plotly)
-```
-
-#### Heterogeneidad Geográfica
-
-```{r mapa-coropletico-costeES}
-geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
-geoj_esp.tb <- geoj_esp %>% as_tibble()
-
-tb <- geoj_esp.tb %>% 
-    left_join(
-        data %>% 
-        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="D1_SAL_PER", unit=="EUR", year==2023, sector=="TOTAL") %>% 
-        na.omit(),
-        join_by("NUTS_ID" == "geo")
-        )
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>","Coste laboral por persona empleada",
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
-MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
-```
-
-```{r mapa-coropletico-horasES}
-geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
-geoj_esp.tb <- geoj_esp %>% as_tibble()
-
-tb <- geoj_esp.tb %>% 
-    left_join(
-        data %>% 
-        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="HW_EMP", unit=="HW", year==2023, sector=="TOTAL") %>% 
-        na.omit(),
-        join_by("NUTS_ID" == "geo")
-        )
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>","Horas trabajadas anuales",
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
-MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
-```
-
-```{r boxplot-sectores-NUTS1}
-p <- data %>%
-  # Filtramos países, el indicador de Salario por Persona y aseguramos Euros
-  filter(substr(geo, 1, 2) == "ES" & NUTS == 1, item == "D1_SAL_HW", unit == "EUR") %>%
   
   ggplot(aes(x = reorder(full_name,-values), y = values, fill = full_name)) +
   
@@ -1414,51 +1321,10 @@ p <- data %>%
 ggplotly(p)
 ```
 
-#### La Causa Raíz: Estructura Sectorial
+Para afinar el diagnóstico europeo, este diagrama de caja nos permite ver la "radiografía interna" de la desigualdad en cada país, mostrando no solo el promedio, sino la dispersión de los costes laborales. Mientras países como Luxemburgo o Dinamarca exhiben cajas altas y alargadas —indicando que tienen sectores capaces de alcanzar salarios muy elevados—, España muestra una caja mucho más comprimida y situada en la parte baja de la escala. Esto señala que nuestro "techo" salarial es estructuralmente bajo; incluso nuestros tramos mejor remunerados apenas compiten con los promedios de las potencias del norte.  
 
-```{r donut-sectores-es23}
-# --- 1. PREPARACIÓN Y FILTRADO DE DATOS ---
-
-tb_plotly <- data %>%
-  filter(
-    geo == "ES", 
-    item == "D1_SAL_HW", 
-    unit == "EUR", 
-    year == 2023, 
-    sector != "TOTAL"
-  ) %>%
-  group_by(sector_name) %>%
-  # Calculamos la suma total del Coste por Hora por sector para el porcentaje
-  summarise(total_value = sum(values, na.rm = TRUE)) %>% 
-  ungroup() %>%
-  drop_na()
-
-# --- 2. GENERACIÓN DEL GRÁFICO DINÁMICO (PLOTLY DONUT) ---
-
-p_donut_dinamico <- tb_plotly %>%
-  plotly::plot_ly(
-    labels = ~sector_name,
-    values = ~total_value,
-    textposition = 'inside',
-    # Configuración de texto y orientación (como en tu ejemplo)
-    textinfo = 'label+percent',
-    insidetextorientation = 'radial',
-    hoverinfo = 'label+percent+value' # Tooltip personalizado
-  ) %>%
-  
-  # Añadimos el agujero y quitamos la leyenda para dejar el gráfico limpio
-  add_pie(hole = 0.3) %>%
-  
-  layout(
-    title = "Distribución del Coste Laboral por Sector (España, 2023)",
-    showlegend = FALSE, # Quitamos la leyenda
-    # Aseguramos que el gráfico se muestre como círculo
-    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
-    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
-  )
-
-ggplotly(p_donut_dinamico)
-```
+<br>
+Sin embargo, el boxplot tiene una limitación: agrupa toda la economía en una sola "caja", ocultando los detalles específicos. Al ver esa compresión en los salarios españoles, surge la duda: ¿Es que pagamos mal en todos los sitios, o es que tenemos pocos sectores de alto valor? Para responder a esto, necesitamos desplegar esa caja y mirar sector por sector.  
 
 ```{r mapa-calor-sectores-eu}
 tb <- data %>%
@@ -1511,6 +1377,344 @@ p <- top_countries %>%
 ggplotly(tooltip = "text")
 ```
 
+Si el diagrama de cajas nos sugería un problema general, este mapa de calor confirma que la desventaja es estructural y relativa. Para este análisis, hemos utilizado la variable `PC_EU27_2020_MEUR_CP`, que normaliza los datos como un porcentaje respecto al total de la UE27. Esto es fundamental porque elimina el sesgo de la riqueza absoluta: no estamos viendo simplemente qué países son más ricos, sino cómo rinde cada sector en comparación con el estándar europeo.  
+El resultado es un degradado vertical implacable: las columnas de la izquierda (Luxemburgo, Dinamarca) muestran tonos oscuros intensos, indicando que sus sectores rinden muy por encima de la media europea. A medida que la vista recorre hacia la derecha, el color se desvanece hasta la palidez de España e Italia. El insight más doloroso de este gráfico es que desmonta la idea de que "basta con cambiar de sector". Incluso si comparamos filas idénticas, como "Información y comunicación" o "Profesionales y científicas" (sectores tradicionalmente de alto valor), vemos que en España tienen una intensidad de color muy inferior a sus homólogos del norte. No es solo que tengamos sectores "peores", es que nuestros sectores "buenos" generan y retribuyen mucho menos valor que los mismos sectores en Europa.  
+
+<br>
+Europa nos ha enseñado que trabajar más horas no es la solución. España está atrapada en un modelo de alto presencialismo y bajo valor añadido. Para entender cómo hemos llegado aquí y si hay esperanza de cambio, necesitamos dejar el mapa europeo y hacer zoom sobre nuestra propia historia reciente.
+
+#### Crisis y Convergencia: Trayectoria España
+
+Dejamos el mapa europeo con una conclusión amarga: España trabaja mucho para generar poco valor relativo. Pero, ¿siempre ha sido así? ¿Hemos mejorado con el tiempo o estamos estancados? Para responder a esto, dejamos de mirar a los vecinos y colocamos la lupa sobre la economía española para analizar su evolución en las últimas dos décadas. Lo que encontramos no es una línea de crecimiento sostenido, sino un proceso marcado por la volatilidad y dos caídas económicas.  
+
+```{r variacion-salarios}
+df_variation <- data %>%
+  filter(full_name == "Spain", NUTS == 0, sector == "TOTAL", item == "D1_SAL_PER", unit == "EUR") %>%
+  arrange(year) %>%
+  group_by(full_name) %>%
+  # Cálculo de la variación porcentual interanual (Perfecto como lo tienes)
+  mutate(variation_pct = (values / lag(values) - 1) * 100) %>%
+  ungroup() %>%
+  drop_na() # Quitamos el NA del primer año
+
+# --- 2. GENERACIÓN DEL GRÁFICO INTERACTIVO (PLOTLY) ---
+p_variation_plotly <- df_variation %>%
+  plotly::plot_ly(
+    x = ~year, 
+    y = ~variation_pct, 
+    type = 'scatter', 
+    mode = 'lines+markers',
+    name = 'Variación % Anual',
+    line = list(color = '#1F77B4')
+  ) %>%
+  
+  # Configuración y Layout (Limpieza de ejes)
+  layout(
+    title = "Variación Anual % del Coste Laboral por persona empleada en España",
+    xaxis = list(title = "Año", tickmode = 'linear', dtick = 5), # Muestra años cada 5 para limpiar el eje
+    yaxis = list(title = "Variación Porcentual (%)"),
+    showlegend = FALSE
+  )
+
+ggplotly(p_variation_plotly)
+```
+
+Esta serie temporal representa la variación porcentual del coste laboral año tras año, y actúa como un sismógrafo de nuestra historia reciente. Lejos de la estabilidad deseada, vemos una montaña rusa. Observamos el optimismo de la burbuja inmobiliaria (2000-2008) con crecimientos cercanos al 4-5%, seguido del desplome tras la crisis financiera, tocando fondo con valores negativos en 2012 (año de la reforma laboral y los recortes).  
+Sin embargo, el dato más engañoso aparece al final: ese pico vertical en 2020 que roza el 6% de "crecimiento". No nos dejemos engañar; al igual que vimos en Europa, esto no es riqueza real. Es una ilusión estadística provocada por la pandemia: el coste unitario subió porque las horas trabajadas se desplomaron mientras los mecanismos de protección (ERTEs) sostenían las rentas. Esta volatilidad nos indica que nuestro modelo reacciona a los golpes externos con virulencia, pero, ¿hacia dónde nos ha llevado todo este movimiento?  
+
+<br>
+Si convertimos estos altibajos en una trayectoria de movimiento, ¿hemos avanzado hacia la eficiencia europea (arriba e izquierda) o simplemente estamos dando vueltas en círculos?
+
+```{r direccion-evolucion}
+df_snail <- data %>%
+  filter(
+    full_name == "Spain", 
+    NUTS == 0,
+    sector == "TOTAL", # Análisis agregado nacional
+    item %in% c("D1_SAL_HW", "HW_EMP"),
+    unit %in% c("EUR", "HW")
+  ) %>%
+  select(year, full_name, item, values) %>%
+  
+  # Pivotar a formato ancho para que los indicadores sean columnas
+  pivot_wider(names_from = item, values_from = values) %>%
+  drop_na(D1_SAL_HW, HW_EMP) %>%
+  arrange(year) # Esencial: ordena por año para que la línea siga la secuencia
+
+
+# --- 2. GENERACIÓN DEL GRÁFICO (Connected Scatter Plot) ---
+p_snail <- df_snail %>%
+  # Mapeamos el color y el label al año
+  ggplot(aes(x = HW_EMP, y = D1_SAL_HW, color = year, group = 1,
+             text = paste("Año:", year,
+                          "<br>Horas:", round(HW_EMP, 0),
+                          "<br>Coste/Hora:", round(D1_SAL_HW, 2), "€"))) +
+  
+  # 2.1. El camino que conecta los años cronológicamente
+  geom_path(color = "gray", linewidth = 0.8) +
+  
+  # 2.2. Los puntos (las paradas en cada año)
+  geom_point(size = 2) +
+  
+  # Labels
+  labs(
+    title = "Trayectoria de la Eficiencia Laboral en España (2000-2023)",
+    x = "Horas Trabajadas Anuales por Empleado",
+    y = "Coste Laboral por Hora (€)",
+    color = "Año"
+  ) +
+  
+  # Tema y Escala de Color
+  scale_color_viridis_c() + # Escala de color que va cambiando con el tiempo
+  theme(legend.position = "none")
+
+# 3. Interactividad (para ver los tooltips al pasar el ratón)
+ggplotly(p_snail, tooltip = "text")
+```
+
+Este gráfico es quizás la prueba más contundente de la memoria. Aquí trazamos el viaje de la economía española desde 2000 hasta 2023, conectando cada año con el siguiente. El eje X representa las horas trabajadas (presencialismo) y el eje Y el coste laboral (valor/riqueza).  
+
+La forma resultante recuerda a un caracol o un muelle que se contrae. Partimos en el 2000 (esquina inferior derecha) con muchas horas y muy poco valor. A lo largo de los años, nos hemos desplazado hacia la izquierda, reduciendo la jornada media anual de unas 1.750 horas a cerca de 1.630. Sin embargo, el movimiento vertical —el aumento de riqueza— ha sido penosamente lento. La "cicatriz" del 2020 es visible como un bucle errático en la parte superior (puntos amarillos), donde saltamos hacia la izquierda y arriba artificialmente, para luego corregir. La conclusión es dura: España ha reducido el esfuerzo (horas), pero no ha logrado disparar la eficiencia (valor). Nos movemos, pero no despegamos.  
+
+<br>
+Si el "caracol" anterior nos mostraba un crecimiento promedio lento, este gráfico de líneas nos revela el culpable: la media española es una ficción que esconde una economía de doble velocidad. Al desglosar la evolución del coste por hora trabajada sector por sector, observamos una divergencia brutal. 
+
+```{r evolucion-sectores-españa}
+  data_vars <- data %>%
+    filter(
+      item == "D1_SAL_HW",
+      unit == "EUR",
+      geo == "ES",
+      sector != "TOTAL"
+    ) %>%
+    arrange(year)
+
+  # 4. CREACIÓN DEL GRÁFICO
+  #    Base: Las regiones variables
+  hc <- hchart(
+  data_vars, 
+  type = "line",
+  # CORRECCIÓN CLAVE AQUÍ ABAJO:
+  # Cambiamos group = full_name por group = sector_name (o nace_r2)
+  # para que dibuje una línea por cada sector, no una sola línea loca.
+  hcaes(x = year, y = values, group = sector_name), 
+  marker = list(enabled = TRUE, symbol = "circle", radius = 3)
+)
+  
+hc
+```
+
+En la parte superior, sectores como Finanzas (línea verde oscura superior) y las Industrias Extractivas/Energía han escalado posiciones con fuerza, alcanzando costes por hora superiores a los 40€, cifras que empiezan a competir con Europa. Sin embargo, la gravedad de la estructura productiva española se hace evidente en la parte inferior de la gráfica: una maraña de líneas planas que agrupan a sectores masivos como la Hostelería (Comercio y alojamiento) y la Agricultura. Estos sectores apenas han logrado despegar de la franja de los 10€ - 15€ por hora en más de dos décadas.
+
+La conclusión es clara: España no tiene un problema único de productividad; tiene sectores "locomotora" que tiran hacia arriba, pero están lastrados por "vagones" muy pesados de bajo valor añadido que mantienen el promedio nacional estancado.
+
+<br>
+El análisis de nuestra historia reciente confirma que las cicatrices de las crisis no se han curado igual para todos. Mientras algunos sectores han logrado modernizarse y encarecer su hora de trabajo, gran parte del tejido productivo sigue atrapado en costes bajos. Hemos visto la trayectoria temporal (el estancamiento) y la culpable sectorial (la divergencia).  
+Pero, ¿dónde se ubican físicamente estos sectores? ¿Están distribuidos uniformemente por el país o hemos creado zonas de riqueza y pobreza? Para responder a esto, debemos romper el mapa nacional.
+
+#### Heterogeneidad Geográfica
+
+Al descender del nivel nacional al regional, confirmamos que España no es una economía monolítica, sino un puzle de realidades divergentes. Si en Europa vimos una brecha Norte-Sur, es crucial verificar si ese patrón se replica dentro de nuestras fronteras. Para ello, vamos a confrontar directamente dos variables que la narrativa popular suele unir: lo que ganamos (riqueza) frente a lo que trabajamos (esfuerzo).  
+
+```{verbatim mapa-coropletico-costeES}
+geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
+geoj_esp.tb <- geoj_esp %>% as_tibble()
+
+tb <- geoj_esp.tb %>% 
+    left_join(
+        data %>% 
+        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="D1_SAL_PER", unit=="EUR", year==2023, sector=="TOTAL") %>% 
+        na.omit(),
+        join_by("NUTS_ID" == "geo")
+        )
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>","Coste laboral por persona empleada",
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
+```
+```{verbatim mapa-coropletico-horasES}
+geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
+geoj_esp.tb <- geoj_esp %>% as_tibble()
+
+tb <- geoj_esp.tb %>% 
+    left_join(
+        data %>% 
+        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="HW_EMP", unit=="HW", year==2023, sector=="TOTAL") %>% 
+        na.omit(),
+        join_by("NUTS_ID" == "geo")
+        )
+
+etiquetas <-paste(
+    "<strong> ",tb$full_name ,
+    "</strong><br>","Horas trabajadas anuales",
+    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
+  )  %>%
+ lapply(htmltools::HTML)
+
+MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
+```
+
+```{r mapas-comparativos}
+# Preparación de datos (Coste Persona)
+geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
+geoj_esp.tb <- geoj_esp %>% as_tibble()
+
+tb_coste <- geoj_esp.tb %>% 
+    left_join(
+        data %>% 
+        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="D1_SAL_PER", unit=="EUR", year==2023, sector=="TOTAL") %>% 
+        na.omit(),
+        by = join_by("NUTS_ID" == "geo")
+        )
+
+etiquetas_coste <-paste(
+    "<strong> ",tb_coste$full_name ,
+    "</strong><br>","Coste laboral por persona empleada",
+    ": ",prettyNum(round(tb_coste$values,digits=2), big.mark = " ", scientific = FALSE)
+  )  %>%
+  lapply(htmltools::HTML)
+
+# Generar el primer mapa y guardarlo en una variable
+mapa_coste <- MapaCoropléticoES(geoj_esp, tb_coste$values, etiquetas_coste, "Coste empleado (2023)")
+
+
+# -------------------------
+# MAPA 2: HORAS TRABAJADAS
+# -------------------------
+
+# Preparación de datos (Horas Trabajadas)
+tb_horas <- geoj_esp.tb %>% 
+    left_join(
+        data %>% 
+        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="HW_EMP", unit=="HW", year==2023, sector=="TOTAL") %>% 
+        na.omit(),
+        by = join_by("NUTS_ID" == "geo")
+        )
+
+etiquetas_horas <-paste(
+    "<strong> ",tb_horas$full_name ,
+    "</strong><br>","Horas trabajadas anuales",
+    ": ",prettyNum(round(tb_horas$values,digits=2), big.mark = " ", scientific = FALSE)
+  )  %>%
+  lapply(htmltools::HTML)
+
+# Generar el segundo mapa y guardarlo en una variable
+mapa_horas <- MapaCoropléticoES(geoj_esp, tb_horas$values, etiquetas_horas, "Horas anuales (2023)")
+
+
+# -------------------------
+# SALIDA FINAL ALINEADA
+# -------------------------
+
+# Usamos htmltools::tagList() para devolver ambos mapas al mismo tiempo.
+# RMarkdown los alineará horizontalmente gracias a las opciones del chunk (out.width y fig.show).
+htmltools::div(
+  style="width: 1080px; margin-left: calc(50% - 540px);",
+  htmltools::div(
+    style = "display: inline-block; width: 49%; vertical-align: top",
+    mapa_coste
+  ),
+  htmltools::div(
+    style = "display: inline-block; width: 49%; vertical-align: top",
+    mapa_horas
+  )
+)
+```
+
+Al colocar estos dos mapas frente a frente, emerge un patrón revelador: existe una correlación visual inversa. Lo que es oscuro en un mapa, tiende a ser claro en el otro, y viceversa.  
+- El Mapa de la Riqueza (Izquierda): El cuadrante noreste y Madrid aparecen en tonos oscuros y rojizos, señalando las zonas de mayor coste laboral y riqueza.  
+- El Mapa del Esfuerzo (Derecha): Justo esas mismas zonas "ricas" (Madrid, País Vasco) se tiñen aquí de tonos más claros (amarillos), indicando jornadas laborales más cortas. Por el contrario, las zonas que en el mapa de riqueza aparecían pálidas (Castilla-La Mancha, Murcia, Extremadura), aquí se oscurecen hacia el rojo, indicando jornadas más largas.  
+
+La imagen es contraintuitiva pero clara: las regiones más ricas son las que menos horas trabajan. Madrid, la "isla de calor" salarial, es una zona "fría" en horas. En cambio, regiones con menor renta como Canarias o el sur peninsular presentan colores más intensos en esfuerzo. Esto demuestra que la pobreza relativa no es fruto de la pereza; de hecho, las regiones con menor coste laboral tienden a compensar su menor productividad estructural con un mayor presencialismo.  
+
+```{r boxplot-sectores-NUTS1}
+p <- data %>%
+  # Filtramos países, el indicador de Salario por Persona y aseguramos Euros
+  filter(substr(geo, 1, 2) == "ES" & NUTS == 1, item == "D1_SAL_HW", unit == "EUR") %>%
+  
+  ggplot(aes(x = reorder(full_name,-values), y = values, fill = full_name)) +
+  
+  geom_boxplot() +
+  
+  # Rotamos los nombres del eje X para que se lean bien
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "none") +
+  
+  labs(x = "", y = "Coste por hora trabajada (€)")
+
+ggplotly(p)
+```
+
+Confirmado que trabajar más no nos hace más ricos, miramos la estructura de los salarios. Este diagrama de cajas nos revela la "calidad" de la desigualdad.  
+- La Oportunidad en el Centro: La caja de Madrid (izquierda, verde) es alta y con numerosos outliers disparándose hacia arriba. Aunque hay salarios bajos, existe un "ascensor" claro hacia sueldos muy altos (>40€/hora).  
+- El Techo Canario: En el extremo derecho, Canarias (rojo) narra una historia de compresión. No solo su mediana es la más baja, sino que su caja es compacta y carece de esos outliers superiores.  
+
+El drama de Canarias no es solo tener una media baja; es el "techo de cristal regional". La estructura económica comprime los salarios: incluso los trabajadores de élite en las islas apenas alcanzan los niveles medios de Madrid. No hay dispersión hacia la riqueza.  
+
+<br>
+El análisis geográfico ha sido devastador para el prejuicio del esfuerzo. Hemos visto una inversión de roles: las zonas ricas trabajan menos y las zonas "pobres" trabajan más. Canarias se esfuerza tanto o más que el norte, pero su estructura actúa como una losa que impide que ese tiempo se traduzca en valor.  
+
+Si trabajamos más horas para generar menos riqueza y chocamos con un techo salarial bajo... **la causa no puede ser geográfica, tiene que ser sectorial.** ¿En qué trabajamos los canarios para que nuestro esfuerzo valga tan poco?  
+
+#### La Causa Raíz: Estructura Sectorial
+
+Hemos recorrido un largo camino para descartar culpables. Sabemos que no es un problema de "ser españoles" (Europa nos mostró nuestra ineficiencia relativa), ni de las crisis (que afectaron a todos), ni siquiera de vivir en el sur o en una isla (el mapa de esfuerzo nos absolvió).  
+Si trabajamos prácticamente las mismas horas que en el norte pero generamos la mitad de riqueza, la única variable que nos queda es la **naturaleza del trabajo**. El mercado no remunera el esfuerzo bruto, sino el valor añadido y la escalabilidad. Existen actividades donde la tecnología actúa como una palanca que multiplica exponencialmente el rendimiento de cada hora invertida, mientras que otros sectores enfrentan límites estructurales naturales, donde la productividad está acotada por la pura presencia física, independientemente de la dedicación del trabajador. En este capítulo, abrimos la "caja negra" de la economía para demostrar que la desigualdad regional no es más que **desigualdad sectorial disfrazada de geografía**.  
+
+```{r donut-sectores-es23}
+# --- 1. PREPARACIÓN Y FILTRADO DE DATOS ---
+
+tb_plotly <- data %>%
+  filter(
+    geo == "ES", 
+    item == "D1_SAL_HW", 
+    unit == "EUR", 
+    year == 2023, 
+    sector != "TOTAL"
+  ) %>%
+  group_by(sector_name) %>%
+  # Calculamos la suma total del Coste por Hora por sector para el porcentaje
+  summarise(total_value = sum(values, na.rm = TRUE)) %>% 
+  ungroup() %>%
+  drop_na()
+
+# --- 2. GENERACIÓN DEL GRÁFICO DINÁMICO (PLOTLY DONUT) ---
+
+p_donut_dinamico <- tb_plotly %>%
+  plotly::plot_ly(
+    labels = ~sector_name,
+    values = ~total_value,
+    textposition = 'inside',
+    # Configuración de texto y orientación (como en tu ejemplo)
+    textinfo = 'label+percent',
+    insidetextorientation = 'radial',
+    hoverinfo = 'label+percent+value' # Tooltip personalizado
+  ) %>%
+  
+  # Añadimos el agujero y quitamos la leyenda para dejar el gráfico limpio
+  add_pie(hole = 0.3) %>%
+  
+  layout(
+    title = "Distribución del Coste Laboral por Sector (España, 2023)",
+    showlegend = FALSE, # Quitamos la leyenda
+    # Aseguramos que el gráfico se muestre como círculo
+    xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+    yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+  )
+
+ggplotly(p_donut_dinamico)
+```
+
+Para entender el problema, primero miremos la estructura base de España. Este gráfico por secciones muestra cómo se reparte la masa salarial del país. A primera vista, vemos sectores potentes: Finanzas lidera con un 11.5%, seguido de la Administración Pública.  
+Sin embargo, si sumamos los sectores tradicionalmente asociados a menor valor añadido o menor escalabilidad tecnológica —Comercio y transporte (6.51%), Comercio y alojamiento (6.2%) y Construcción (6.68%)—, obtenemos un bloque masivo de la economía (casi el 20% del coste laboral total) que depende de la presencialidad física y tiene márgenes más ajustados. España no es una economía puramente tecnológica; tiene un "lastre" estructural importante en servicios de bajo valor. Pero, ¿se reparte este lastre por igual en todo el territorio?  
+
+<br>
+Aquí es donde la media nacional vuelve a engañarnos. Ese 11.5% de riqueza financiera no está esparcido uniformemente como la mantequilla; está concentrado en puntos muy específicos. Vamos a cruzar el sector con la región para ver la "radiografía" completa.
+
 ```{r mapa-calor-sectores-CCAA}
 top_comunidades_ES <- data %>% 
     filter(item=="D1_SAL_HW", unit=="EUR", year>=2018, substr(geo, 1, 2) == "ES" & NUTS==2) %>% 
@@ -1542,114 +1746,16 @@ p <- top_comunidades_ES %>%
 ggplotly(tooltip = "text")
 ```
 
+Esta visualización actúa como el diagnóstico definitivo del proyecto. Al cruzar cada comunidad autónoma con sus sectores productivos, el código de color revela una jerarquía implacable: la fila de Finanzas cruza el mapa como una viga maestra de azul intenso (especialmente en Madrid), mientras que actividades como Comercio y alojamiento o Agricultura se diluyen en tonos pálidos casi idénticos en todo el territorio. El problema de Canarias se hace aquí evidente y visual; no es que seamos menos productivos por ser isleños, es que nuestra economía habita masivamente en esas filas inferiores de color blanco ("los sectores pálidos"), mientras que las regiones ricas basan su liderazgo en acumular fichas en los sectores "azules" de alto valor añadido. La desigualdad geográfica es, en esencia, una desigualdad de especialización.  
+
+<br>
+Ya tenemos al culpable. No es el mapa, es el menú. España sufre de una estructura donde los sectores de alto valor (Finanzas, Tecnología) actúan como islas de riqueza concentradas en Madrid y el Norte, mientras que territorios como Canarias funcionan como enormes plataformas de servicios de bajo coste (Hostelería o Agricultura, entre otros).  
+La pregunta final es inevitable. Si ya sabemos que el sector es el destino... ¿Está Canarias condenada por su especialización turística? ¿Es posible tener un sector turístico eficiente y bien pagado, o estamos atrapados en una trampa de pobreza estructural?
+
 #### Conclusión: El Caso de Canarias
 
-```{r dubmbell-plot}
-max_year <- max(data$year, na.rm = TRUE)
-
-df_dumbbell <- data %>%
-  filter(
-    full_name %in% c("Spain", "Canarias"),
-    item == "D1_SAL_HW",
-    unit == "EUR",
-    year == max_year, # Snapshot del último año
-    sector != "TOTAL" 
-  ) %>%
-  select(sector_name, full_name, values) %>%
-  mutate(full_name = if_else(full_name == "Spain", "España", full_name)) %>% 
-  drop_na()
-
-# 2. Generación del gráfico de mancuernas (Dumbbell Plot)
-p_dumbbell <- df_dumbbell %>%
-  
-  mutate(sector_name = fct_reorder(sector_name, values, .fun = mean, na.rm = TRUE)) %>%
-  
-  # 2.1. Mapeamos el color general
-  ggplot(aes(x = values, y = sector_name, color = full_name)) +
-  
-  # Línea que conecta los puntos (la 'mancuerna')
-  geom_line(aes(group = sector_name), color = "grey", linewidth = 1) +
-  
-  # Puntos (las 'pesas') - Aquí metemos el tooltip y ajustamos el tamaño
-  geom_point(
-    # AÑADIDO: Tooltip SÓLO en los puntos
-    aes(text = paste("Región:", full_name, 
-                     "<br>Sector:", sector_name,
-                     "<br>Coste/Hora:", round(values, 2), "€")), 
-    size = 2.5 # AJUSTE: Hacemos los puntos más pequeños (antes 4)
-  ) +
-  
-  # Configuración de color y leyenda
-  scale_color_manual(values = c("Canarias" = "red", "España" = "#1F77B4"), name = "Región") +
-  
-  # Etiquetas y Títulos
-  labs(
-    title = paste("Brecha Sectorial del Coste por Hora: España vs. Canarias (", max_year, ")"),
-    x = "Coste Laboral por Hora (€)",
-    y = "Sector Laboral"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-
-# 3. Renderizado interactivo
-ggplotly(p_dumbbell, tooltip = "text")
-```
-
-```{r top3sectores-canarias}
-# Filtrado de Canarias y ordenamiento
-tb <- data %>% 
-    filter(geo == "ES7", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector != "TOTAL") %>% 
-    arrange(values)
-
-top <- tb %>% tail(3)
-bottom <- tb %>% head(3)
-
-# Valor de referencia de España (media nacional)
-valor_referencia <- data %>% 
-    filter(geo == "ES", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector == "TOTAL") %>%
-    pull(values)
-
-# 2. COMBINACIÓN Y CLASIFICACIÓN DE SECTORES
-df_plot <- bind_rows(
-    top %>% mutate(Sector_Type = "Top 3 (Mejor Remunerado)"),
-    bottom %>% mutate(Sector_Type = "Bottom 3 (Peor Remunerado)")
-)
-
-# 3. GENERACIÓN DEL GRÁFICO (Barra horizontal con referencia)
-p_top_bottom <- df_plot %>%
-    ggplot(aes(x = reorder(sector_name, values), y = values, fill = Sector_Type)) +
-    
-    # Barras (coord_flip requiere hjust = -0.1 para texto fuera)
-    geom_bar(
-      stat = "identity", 
-      color = "black",
-      aes(text = paste("Sector:", sector_name, 
-                       "<br>Coste/Hora:", round(values, 2), "€"))
-    ) +
-    
-    # Línea de referencia de España
-    geom_hline(yintercept = valor_referencia, color = "red", linetype = "dashed", linewidth = 1) +
-    
-    # Anotación para la línea de España (colocada en el inicio del eje X)
-    annotate("text", 
-             x = 0.5, y = valor_referencia + 2, 
-             label = "Media Nacional", 
-             color = "red", hjust = -0.1, vjust = -1, size = 3.7) +
-    
-    # Temas y Labels
-    scale_fill_manual(values = c("Top 3 (Mejor Remunerado)" = "#1F77B4", "Bottom 3 (Peor Remunerado)" = "#FF7F0E")) +
-    labs(title = paste("Contraste Salarial Sectorial en Canarias (", 2023, ")"),
-         subtitle = "Comparación Top 3 y Bottom 3 vs. Media Nacional de Coste por Hora",
-         y = "Coste Laboral por Hora (€)",
-         x = "",
-         fill = "Remuneración del sector") +
-    theme(legend.position = "bottom", axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggplotly(p_top_bottom, tooltip = "text")
-
-
-    
-```
+Hemos viajado desde los datos macroeconómicos de Europa hasta las entrañas de la estructura sectorial española. Todas las pruebas apuntan a una conclusión: la baja remuneración no es un castigo divino ni geográfico, sino la consecuencia matemática de una especialización en actividades de bajo valor.  
+Ahora, aplicamos todo lo aprendido al paciente cero: Canarias. Si nuestra tesis es correcta, el archipiélago no debería ser simplemente "más pobre", sino que debería mostrar los síntomas agudos de una estructura enferma: una brecha creciente con el continente y una incapacidad sistémica para generar valor, incluso trabajando las mismas horas.  
 
 ```{r brecha-salario-ESIC}
 # --- 1. PREPARACIÓN DE DATOS (WIDE y LONG) ---
@@ -1709,6 +1815,76 @@ p_brecha_final <- df_brecha_wide %>%
 ggplotly(p_brecha_final, tooltip = "text")
 ```
 
+Para entender la magnitud del problema, primero debemos mirar la película completa. Este gráfico de área no muestra simplemente salarios, muestra la distancia entre ser empleado en la Península (azul) y serlo en las Islas (rojo).  
+
+Lo dramático de esta imagen es la tendencia. A principios de los 2000, las líneas caminaban relativamente cerca. Sin embargo, tras la crisis de 2008, se produce una ruptura: España recupera ritmo mientras Canarias se aplana. La "boca" del gráfico se abre cada vez más, convirtiendo lo que era una diferencia regional en un abismo estructural. Hoy, la brecha es la más grande de la serie histórica. Canarias no está convergiendo con el resto del país; se está desacoplando económicamente.  
+
+<br>
+Sabemos que ganamos menos y que cada vez nos alejamos más. Pero, ¿nos alejamos en todo? ¿O es que hay sectores donde "perdemos más" que en otros?
+
+```{r dubmbell-plot}
+max_year <- max(data$year, na.rm = TRUE)
+
+df_dumbbell <- data %>%
+  filter(
+    full_name %in% c("Spain", "Canarias"),
+    item == "D1_SAL_HW",
+    unit == "EUR",
+    year == max_year, # Snapshot del último año
+    sector != "TOTAL" 
+  ) %>%
+  select(sector_name, full_name, values) %>%
+  mutate(full_name = if_else(full_name == "Spain", "España", full_name)) %>% 
+  drop_na()
+
+# 2. Generación del gráfico de mancuernas (Dumbbell Plot)
+p_dumbbell <- df_dumbbell %>%
+  
+  mutate(sector_name = fct_reorder(sector_name, values, .fun = mean, na.rm = TRUE)) %>%
+  
+  # 2.1. Mapeamos el color general
+  ggplot(aes(x = values, y = sector_name, color = full_name)) +
+  
+  # Línea que conecta los puntos (la 'mancuerna')
+  geom_line(aes(group = sector_name), color = "grey", linewidth = 1) +
+  
+  # Puntos (las 'pesas') - Aquí metemos el tooltip y ajustamos el tamaño
+  geom_point(
+    # AÑADIDO: Tooltip SÓLO en los puntos
+    aes(text = paste("Región:", full_name, 
+                     "<br>Sector:", sector_name,
+                     "<br>Coste/Hora:", round(values, 2), "€")), 
+    size = 2.5 # AJUSTE: Hacemos los puntos más pequeños (antes 4)
+  ) +
+  
+  # Configuración de color y leyenda
+  scale_color_manual(values = c("Canarias" = "red", "España" = "#1F77B4"), name = "Región") +
+  
+  # Etiquetas y Títulos
+  labs(
+    title = "Brecha Sectorial del Coste por Hora",
+    subtitle = ("España vs Canarias (Año 2023)"),
+    x = "Coste Laboral por Hora (€)",
+    y = "Sector Laboral"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# 3. Renderizado interactivo
+ggplotly(p_dumbbell, tooltip = "text")
+```
+
+Este gráfico de mancuernas es la prueba pericial más detallada. Cada línea gris representa la distancia salarial en un sector específico entre España (punto azul) y Canarias (punto rojo).  
+
+El diagnóstico es severo: Canarias pierde en todo. El punto rojo está sistemáticamente a la izquierda en todos los sectores. Pero el matiz crucial está en la longitud de la línea.  
+
+- En sectores de bajo valor como "Agricultura" o "Artes y otros servicios", los puntos están relativamente cerca. Somos igual de "baratos" que el resto.
+
+- Sin embargo, si nos fijamos en los sectores que deberían tirar de la economía: "Información y comunicación" o "Industria", observamos que las líneas grises son larguísimas. Esto revela una "penalización insular del talento": un ingeniero o un informático en Canarias sufre una depreciación salarial mucho mayor que un camarero comparado con sus homólogos peninsulares.
+
+<br>
+Esta imagen congela el estado actual de la brecha, pero no nos dice cómo hemos llegado hasta aquí. ¿Es esta distancia estructural algo estático, o se está ensanchando con el tiempo?
+
 ```{r sectores-wrapped-ESIC}
 # --- 1. PREPARACIÓN DE DATOS BASE ---
 df_facet <- data %>%
@@ -1718,7 +1894,7 @@ df_facet <- data %>%
     (full_name %in% c("Canarias") & NUTS == 2),
     item == "D1_SAL_HW",
     unit == "EUR",
-    # sector != "TOTAL" # Excluimos el total para ver los sectores individuales
+    sector != "TOTAL" # Excluimos el total para ver los sectores individuales
   ) %>%
   # Renombrar Spain para que la leyenda se vea mejor
   mutate(full_name = if_else(full_name == "Spain", "España", full_name)) %>%
@@ -1758,8 +1934,80 @@ p_facet_time_series <- df_facet %>%
 ggplotly(p_facet_time_series, tooltip = "text")
 ```
 
+Si desglosamos la evolución temporal sector por sector, confirmamos la tragedia del talento. Fijaos en el gráfico de "Comercio y alojamiento" (Hostelería). Las líneas azul y roja avanzan casi pegadas, entrelazándose; el sector turístico canario es competitivo en costes con el nacional.
+
+Ahora mirad "Profesionales y científicas" o "Información y comunicación". La línea azul (España) despega hacia arriba con fuerza, mientras la roja (Canarias) se queda rezagada, incapaz de seguir el ritmo de crecimiento de valor. No es que Canarias no crezca, es que sus sectores de alto valor están atrofiados y no logran generar la tracción que sí generan en la península.
+
+<br>
+Si nuestros sectores de alto valor pagan mucho peor que en la península, y nuestros sectores de bajo valor pagan "normal" (bajo)... ¿Qué pasa cuando la inmensa mayoría de la población trabaja en los segundos?  
+
+```{r top3sectores-canarias}
+# Filtrado de Canarias y ordenamiento
+tb <- data %>% 
+    filter(geo == "ES7", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector != "TOTAL") %>% 
+    arrange(values)
+
+top <- tb %>% tail(4)
+bottom <- tb %>% head(4)
+
+# Valor de referencia de España (media nacional)
+valor_referencia <- data %>% 
+    filter(geo == "ES", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector == "TOTAL") %>%
+    pull(values)
+
+# 2. COMBINACIÓN Y CLASIFICACIÓN DE SECTORES
+df_plot <- bind_rows(
+    top %>% mutate(Sector_Type = "Top 3 (Mejor Remunerado)"),
+    bottom %>% mutate(Sector_Type = "Bottom 3 (Peor Remunerado)")
+)
+
+# 3. GENERACIÓN DEL GRÁFICO (Barra horizontal con referencia)
+p_top_bottom <- df_plot %>%
+    ggplot(aes(x = reorder(sector_name, values), y = values, fill = Sector_Type)) +
+    
+    # Barras (coord_flip requiere hjust = -0.1 para texto fuera)
+    geom_bar(
+      stat = "identity", 
+      color = "black",
+      aes(text = paste("Sector:", sector_name, 
+                       "<br>Coste/Hora:", round(values, 2), "€"))
+    ) +
+    
+    # Línea de referencia de España
+    geom_hline(yintercept = valor_referencia, color = "red", linetype = "dashed", linewidth = 1) +
+    
+    # Anotación para la línea de España (colocada en el inicio del eje X)
+    annotate("text", 
+             x = 0.5, y = valor_referencia + 2, 
+             label = "Media Nacional", 
+             color = "red", hjust = -0.1, vjust = -1, size = 3.7) +
+    
+    # Temas y Labels
+    scale_fill_manual(values = c("Top 3 (Mejor Remunerado)" = "#1F77B4", "Bottom 3 (Peor Remunerado)" = "#FF7F0E")) +
+    labs(title = paste("Contraste Salarial Sectorial en Canarias (", 2023, ")"),
+         subtitle = "Comparación Top 3 y Bottom 3 vs. Media Nacional de Coste por Hora",
+         y = "Coste Laboral por Hora (€)",
+         x = "",
+         fill = "Remuneración del sector") +
+    theme(legend.position = "bottom", axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(p_top_bottom, tooltip = "text")
+
+
+    
+```
+
+Esta última imagen resume el destino económico de las islas y nos deja un titular preocupante: en Canarias, tener una profesión "intelectual" no garantiza un sueldo digno.
+
+A la derecha (barras azules), vemos los Top 4 sectores que logran superar la media nacional (línea roja): Finanzas, la Administración Pública (tanto en Educación como en Salud) e Información y Comunicación. Estos actúan como "islas de riqueza", pero dependen en gran medida del empleo público o de nichos muy específicos.  
+
+La verdadera tragedia se revela en el bloque de la izquierda (Bottom 4). Junto a sectores tradicionalmente precarios como la Agricultura o el Arte, encontramos a las Inmobiliarias y, lo más alarmante, a las Actividades Profesionales y Científicas. Este es el dato que rompe el esquema: un sector que en el resto de Europa es motor de clase media-alta, en Canarias ha caído al vagón de cola, con salarios que apenas compiten con el sector primario. Esto confirma que la economía canaria no solo paga mal en sectores precarios nacionalmente; deprecia sistemáticamente el valor del conocimiento técnico, empujando al talento local a emigrar o a aceptar condiciones muy por debajo de su cualificación.  
+
+La conclusión del proyecto es visualmente ineludible: Canarias tiene una economía polarizada donde la "clase media" sectorial ha desaparecido. Tenemos unos pocos sectores de élite desconectados y una inmensa base de servicios de bajo valor que ancla el promedio hacia el fondo.  
+
 ## Modelado
 <!-- desarrollo de esta fase -->
+
 ```{r matriz-dispersion}
 data %>% 
   filter(item=="D1_SAL_HW", unit=="EUR", substr(geo, 1, 2) == "ES" & NUTS == 2) %>%  
