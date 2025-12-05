@@ -1,5 +1,5 @@
 ---
-title: "Desigualdades regionales y sectoriales en costes laborales y horas trabajadas en la UE"
+title: "Análisis de la disparidad salarial en Europa: Impacto de la estructura sectorial en España y Canarias"
 author: "Alejandro Delgado Valera"
 date: "`r Sys.Date()`"
 output:
@@ -129,6 +129,32 @@ border: 1px solid #e0e0e0;
 /* === Márgenes de página === */
 @page {
 margin: 2.5cm 2cm;
+}
+
+/* --- CONTENEDOR DE CADA CHUNK --- */
+.figure, .html-widget {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 100%;          /* Ocupa el ancho total disponible del texto */
+}
+
+/* --- PARA FIGURAS (ggplot, png, etc.) --- */
+.figure img {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;          /* Que no se salga del ancho del texto */
+    height: auto !important;  /* Mantiene proporción, no deforma */
+}
+
+/* --- PARA WIDGETS HTML (leaflet, plotly...) --- */
+.html-widget {
+    width: 100% !important;   /* Ocupa todo el contenedor */
+}
+
+.html-widget > div {
+    width: 100% !important;
+    height: auto;             /* Deja que RMarkdown/fig.height controle la altura */
 }
 
 ```
@@ -521,29 +547,31 @@ show_values = TRUE # flat para controlar si se imprimen los valores en las celda
 
 # Introducción
 <!-- situar el tema en un contexto amplio, destacando su relevancia en la actualidad. Delimitar el problema que se aborda en ese contexto amplio --> 
-La economía europea se construyó sobre la promesa de la convergencia: la idea de que, con el tiempo y la integración de mercados, los niveles de vida y la riqueza de los estados miembros tenderían a igualarse. Sin embargo, tres décadas después, la realidad dibuja un mapa de velocidades divergentes. En este escenario, España, y muy particularmente la región ultraperiférica de Canarias, se enfrenta a una paradoja persistente: a pesar de los esfuerzos de modernización y la integración en el mercado común, la brecha salarial con el núcleo económico europeo no solo no se cierra, sino que en muchos aspectos amenaza con cronificarse.  
+La economía europea se construyó sobre la promesa de la convergencia: la idea de que, con el tiempo y la integración de mercados, los niveles de vida y la riqueza de los estados miembros tenderían a igualarse. Sin embargo, tres décadas después, la realidad dibuja un mapa de velocidades divergentes. En este escenario, España, y muy particularmente la región de Canarias, se enfrenta a una paradoja persistente: a pesar de los esfuerzos de modernización y la integración en el mercado común, la brecha salarial con el núcleo económico europeo no solo no se cierra, sino que en muchos aspectos amenaza con cronificarse.  
 
 La narrativa popular, y a menudo política, ha tendido a simplificar este fenómeno atribuyéndolo a factores culturales o individuales, sugiriendo que la baja remuneración en el sur de Europa es consecuencia de una menor "cultura del esfuerzo" o de una ineficiencia intrínseca del trabajador. Este proyecto nace para desafiar esa noción mediante el análisis riguroso de los datos.  
 
-La presente memoria aborda esta problemática desde una perspectiva de **Análisis Exploratorio de Datos y Visualización (AEDV)**, desentrañando la relación entre el coste laboral, las horas trabajadas y la estructura sectorial. El trabajo plantea que el determinante del salario no es la geografía ni el esfuerzo individual, sino la especialización productiva. A través de un viaje analítico que va de lo macro (Europa) a lo micro (Canarias), se busca demostrar que la estructura económica actúa como un "techo de cristal" que limita la generación de valor, independientemente de la intensidad del trabajo realizado.  
+La presente memoria aborda esta problemática desde una perspectiva de *Análisis Exploratorio de Datos y Visualización (AEDV)*, desentrañando la relación entre el coste laboral, las horas trabajadas y la estructura sectorial. El trabajo plantea que el determinante del salario no es la geografía ni el esfuerzo individual, sino la especialización productiva. A través de un viaje analítico que va de lo macro (Europa) a lo micro (Canarias), se busca demostrar que la estructura económica actúa como un "techo de cristal" que limita la generación de valor, independientemente de la intensidad del trabajo realizado.  
 
 ##  Estado actual
 <!-- Explicar conceptos claves relacionados con el tema que se aborda. Comentar estudios/resultados precedentes. Identificación de elementos/circunstancias que justifican la realización del estudio sobre este tema. Relevancia y oportunidad de abordar el tema.-->
-La discusión económica sobre la disparidad de riqueza en Europa gira tradicionalmente en torno a dos conceptos clave que fundamentan este estudio: la Productividad Laboral (valor añadido generado por unidad de trabajo) y el Coste Laboral Unitario (la relación entre el coste de la mano de obra y la productividad). Históricamente, la literatura económica ha señalado una brecha persistente entre el "Norte" y el "Sur" de Europa. Mientras que los países centrales han basado su crecimiento en el aumento de la productividad total de los factores (tecnología y capital humano), estudios precedentes sobre la economía española sugieren que su modelo de crecimiento ha sido extensivo, basado en la acumulación de factores (más horas, más empleo) pero con una eficiencia estancada.  
+La discusión económica sobre la disparidad de riqueza en Europa se fundamenta en este estudio a través de la relación entre dos variables críticas: las Horas Trabajadas (como medida del volumen de esfuerzo o intensidad laboral) y el Coste Laboral (como indicador de la valoración de mercado de dicho esfuerzo).  
+
+Históricamente, la literatura ha señalado una divergencia estructural entre el "Norte" y el "Sur" del continente. Mientras que las economías centrales han evolucionado hacia modelos donde se maximiza el valor por hora, permitiendo altos salarios sin aumentar la carga lectiva, los estudios precedentes sobre la economía española sugieren la persistencia de un modelo de crecimiento extensivo. Esto implica una dinámica económica basada en la acumulación de factor trabajo (más empleo, jornadas más largas y mayor presencialismo) que, paradójicamente, no logra traducirse en un aumento proporcional del valor unitario, manteniendo los costes laborales estancados en comparación con los estándares europeos. 
 
 Esta dinámica se ha visto agravada por dos hitos recientes que justifican la oportunidad de este análisis:  
 
-- Las secuelas de la crisis financiera (2008-2014): Que provocaron una devaluación salarial interna en España como mecanismo para recuperar competitividad.
+- **Las secuelas de la crisis financiera (2008-2014)**: Que provocaron una devaluación salarial interna en España como mecanismo para recuperar competitividad.
 
-- El shock asimétrico del COVID-19 (2020): Que distorsionó las estadísticas de costes laborales al reducir drásticamente las horas trabajadas mientras se sostenían las rentas mediante mecanismos públicos (ERTEs), generando un "falso positivo" de productividad en los datos que requiere ser depurado y analizado.
+- **El shock asimétrico del COVID-19 (2020)**: Que distorsionó las estadísticas de costes laborales al reducir drásticamente las horas trabajadas mientras se sostenían las rentas mediante mecanismos públicos (ERTEs), generando un "falso positivo" de productividad en los datos que requiere ser depurado y analizado.
 
-La relevancia de abordar este tema ahora reside en el contexto inflacionario actual. Con los precios al alza, entender si los bajos salarios en regiones como Canarias se deben a una baja productividad real o a una estructura sectorial ineficiente es crucial. La justificación del estudio es clara: existe una necesidad urgente de validar empíricamente si la "especialización turística" y de servicios de bajo valor añadido actúa como un lastre estructural que impide la convergencia real con Europa.
+La importancia de este estudio es máxima en el momento actual, donde el coste de la vida no para de subir. Necesitamos entender por qué los sueldos en Canarias son bajos: ¿es porque producimos poco o porque nuestra economía está enfocada en los sectores equivocados? La justificación es clara: hace falta comprobar con datos si depender tanto del turismo y los servicios básicos actúa como un freno que nos impide alcanzar el nivel de riqueza del resto de Europa.  
 
 ## Motivación
 <!-- Descripción de la motivación que te ha llevado a elegir este tema de trabajo que puede incluir intereses personales/sociales/profesionales --> 
 Aunque este proyecto nace en el contexto académico de la asignatura de Análisis Exploratorio de Datos y Visualización (AEDV), la elección de estos datasets responde a una inquietud vital como estudiante del Grado en Ciencia e Ingeniería de Datos.  
 
-La motivación principal es confrontar con datos una realidad que condiciona mi futuro inmediato: la narrativa generalizada de que, para prosperar en el sector tecnológico, es obligatorio emigrar a Madrid o al resto de Europa. He elegido analizar los costes laborales y la estructura sectorial para verificar empíricamente si esa "sentencia" es real. Necesito entender si la devaluación salarial en Canarias afecta también a perfiles de alta cualificación como el mío, o si es un problema exclusivo de otros sectores. En definitiva, este trabajo es una auditoría personal para descubrir si la estructura económica de las islas penaliza mi talento y me empuja inevitablemente a hacer las maletas.
+La motivación principal es confrontar con datos una realidad que condiciona mi futuro inmediato: la narrativa generalizada de que, para prosperar en el sector tecnológico, es obligatorio emigrar a la península o al resto de Europa. He elegido analizar los costes laborales y la estructura sectorial para verificar empíricamente si esa "sentencia" es real. Necesito entender si la devaluación salarial en Canarias afecta también a perfiles de alta cualificación como el mío, o si es un problema exclusivo de otros sectores. En definitiva, este trabajo es una auditoría personal para descubrir si la estructura económica de las islas penaliza mi talento y me empuja inevitablemente a hacer las maletas.
 
 ## Objetivos
 <!-- Expresa de forma amplia y global el propósito principal del trabajo. Cuales son sus metas principales -->
@@ -551,15 +579,15 @@ El propósito principal de este trabajo es determinar, mediante un análisis de 
 
 Para alcanzar esta meta global, se plantean los siguientes objetivos específicos:  
 
-1. Analizar la eficiencia a escala europea: Establecer la correlación entre coste laboral y horas trabajadas en la UE-27 para validar si existe una relación inversa entre presencialismo y productividad.  
+1. **Analizar la eficiencia a escala europea:** Establecer la correlación entre coste laboral y horas trabajadas en la UE-27 para validar si existe una relación inversa entre presencialismo y productividad.  
 
-2. Evaluar la evolución temporal en España: Examinar la trayectoria de los costes y horas desde el año 2000 para identificar el impacto de las crisis y verificar si existe convergencia o divergencia con los estándares europeos.  
+2. **Evaluar la evolución temporal en España:** Examinar la trayectoria de los costes y horas desde el año 2000 para identificar el impacto de las crisis y verificar si existe convergencia o divergencia con los estándares europeos.  
 
-3. Mapear la desigualdad regional: Visualizar la distribución geográfica de la riqueza y el esfuerzo en España para identificar patrones territoriales y aislar el comportamiento de las Comunidades Autónomas.  
+3. **Mapear la desigualdad regional:** Visualizar la distribución geográfica de la riqueza y el esfuerzo en España para identificar patrones territoriales y aislar el comportamiento de las Comunidades Autónomas.  
 
-4. Identificar el determinante sectorial: Desglosar el coste laboral por sectores económicos para demostrar cómo la composición del tejido productivo (peso de la hostelería vs. servicios profesionales) condiciona el techo salarial de cada región.  
+4. **Identificar el determinante sectorial:** Desglosar el coste laboral por sectores económicos para demostrar cómo la composición del tejido productivo (p. ej. peso de la hostelería vs. servicios profesionales) condiciona el techo salarial de cada región.  
 
-5. Diagnosticar la brecha de Canarias: Cuantificar la diferencia salarial específica del archipiélago respecto a la media nacional y determinar en qué sectores se produce el mayor "desacople" de valor.  
+5. **Diagnosticar la brecha de Canarias:** Cuantificar la diferencia salarial específica del archipiélago respecto a la media nacional y determinar en qué sectores se produce el mayor "desacople" de valor.  
 
 # Aportaciones del trabajo
 
@@ -569,19 +597,19 @@ Para alcanzar esta meta global, se plantean los siguientes objetivos específico
 <!-- Análisis del significado e implicaciones de los resultados en el contexto del área de estudio. Nuevas perspectivas o enfoques. Actualización del conocimiento existente. Debe estar alineado con los objetivos. Comentar cuadro de mandos como aportación  -->
 Este trabajo aporta una revisión crítica y basada en datos de la narrativa económica tradicional sobre la desigualdad regional en España. Más allá de la limpieza y tratamiento dels dataset, las principales contribuciones al área de estudio son:  
 
-1. Refutación del mito "Horas vs. Riqueza": El estudio demuestra una correlación inversa entre esfuerzo y salario, aportando una nueva perspectiva: la baja renta en Canarias no se debe a la falta de intensidad laboral (presencialismo), sino a la baja capacidad estructural del modelo para generar valor.  
+1. **Refutación del mito "Horas vs. Riqueza":** El estudio demuestra una correlación inversa entre esfuerzo y salario, aportando una nueva perspectiva: la baja renta en Canarias no se debe a la falta de intensidad laboral (presencialismo), sino a la baja capacidad estructural del modelo para generar valor.  
 
-2. Diagnóstico de la "Penalización Insular del Talento": Se actualiza el conocimiento sobre la brecha salarial al revelar que afecta desproporcionadamente a los sectores de alta cualificación. Un profesional científico/tecnológico sufre mayor depreciación salarial en las islas que un trabajador de servicios, evidenciando una barrera estructural que incentiva la fuga de cerebros.  
+2. **Diagnóstico de la "Penalización Insular del Talento":** Se actualiza el conocimiento sobre la brecha salarial al revelar que afecta desproporcionadamente a los sectores de alta cualificación. Un profesional científico/tecnológico sufre mayor depreciación salarial en las islas que un trabajador de servicios, evidenciando una barrera estructural que incentiva la *fuga de cerebros*.  
 
-3. Evidencia de Desacople Económico: Los análisis temporales contradicen las teorías de convergencia, mostrando que la brecha Canarias-España se ha ensanchado tras las crisis de 2008 y 2020.  
+3. **Evidencia de Desacople Económico:** Los análisis temporales contradicen las teorías de convergencia, mostrando que la brecha Canarias-España se ha ensanchado tras las crisis de 2008 y 2020.  
 
-4. Cuadro de Mandos (Dashboard) como herramienta: La principal aportación técnica es la transformación de datos dispersos (Eurostat/INE) en un Dashboard Interactivo. Esta herramienta permite superar el análisis estático, facilitando la exploración dinámica de las tendencias y democratizando el acceso a información económica compleja.  
+4. **Cuadro de Mandos (Dashboard) como herramienta:** La principal aportación técnica es la transformación de datos dispersos (Eurostat/INE) en un Dashboard Interactivo. Esta herramienta permite superar el análisis estático, facilitando la exploración dinámica de las tendencias y democratizando el acceso a información económica compleja.  
 
 
 ## Alineamiento con los objetivos de desarrollo sostenible
+<!-- Hay que rellenar el fichero "ODS.xlsx" con nuestros datos. Si en ChatGPT hacemos la consulta "Relacionar "mi tema de proyecto" con ODS" nos saldrá un borrador de relaciones que podremos usar como base y  perfeccionar. --> 
 
-<!-- Hay que rellenar el fichero "ODS.xlsx" con nuestros datos. Si en ChatGPT hacemos la consulta "Relacionar "mi tema de proyecto" con ODS" nos saldrá un borrador de relaciones que podremos usar como base y  perfeccionar. 
---> 
+Este proyecto no se queda solo en el análisis teórico, sino que conecta directamente con los problemas reales que la Agenda 2030 de la ONU busca resolver. Al usar datos para entender por qué existen estas desigualdades y por qué los salarios son bajos en Canarias, el trabajo aporta información útil para mejorar nuestra sociedad. A continuación, se muestra cómo se relaciona el estudio con cada objetivo:
 
 ```{r ods}
 tb <- read.xlsx("data/ODS.xlsx") %>%
@@ -606,13 +634,12 @@ tabla %>% column_spec(2, extra_css = "text-align: center;") %>%
           column_spec(5, extra_css = "text-align: center;")
 ```
 
-
 # Desarrollo
 
 
 ## Herramientas empleadas
 <!-- mencionar y justificar para este trabajo el uso de R, RStudio y las librerías principales utilizadas. Mencionar también el servidor shiny del DIS para desplegar públicamente el cuadro de mandos    --> 
-El desarrollo técnico de este proyecto se fundamenta en el lenguaje **R** y el entorno **RStudio**. Esta plataforma ofrece grandes ventajas para el Análisis Exploratorio de Datos gracias a su potencia estadística y su capacidad nativa para el tratamiento de datos. Además, el uso de **R Markdown (.Rmd)** ha sido clave para integrar código, análisis y narrativa en un único flujo de trabajo, generando como resultado final una memoria en formato HTML totalmente reproducible.  
+El desarrollo técnico de este proyecto se fundamenta en el lenguaje *R* y el entorno *RStudio*. Esta plataforma ofrece grandes ventajas para el Análisis Exploratorio de Datos gracias a su potencia estadística y su capacidad nativa para el tratamiento de datos. Además, el uso de *R Markdown (.Rmd)* ha sido clave para integrar código, análisis y narrativa en un único flujo de trabajo, generando como resultado final una memoria en formato HTML totalmente reproducible.  
 
 Para la ejecución del proyecto, se han empleado las siguientes librerías:  
 
@@ -626,13 +653,13 @@ Para la ejecución del proyecto, se han empleado las siguientes librerías:
 
     - `gganimate`: Para visualizar la evolución temporal de la eficiencia y los costes (Acto I).  
 
-- **Despliegue y Dashboarding**: La presentación final se estructura mediante flexdashboard y shinydashboard, creando un cuadro de mandos profesional y reactivo. Para su despliegue público, el archivo se aloja en el servidor Shiny del **Departamento de Ingeniería de Sistemas (DIS)** de la universidad, permitiendo su ejecución remota vía web sin necesidad de instalación local.
+- **Despliegue y Dashboarding**: La presentación final se estructura mediante `flexdashboard` y `shinydashboard`, creando un cuadro de mandos profesional y reactivo. Para su despliegue público, el archivo se aloja en el servidor Shiny del *Departamento de Ingeniería de Sistemas (DIS)* de la universidad, permitiendo su ejecución remota vía web sin necesidad de instalación local.
 
-- **Control de Versiones**: Finalmente, para garantizar la integridad del código y facilitar el desarrollo iterativo, se ha utilizado **Git** junto con **GitHub** como repositorio remoto. Esto no solo ha servido para el control de versiones, sino para dar visibilidad pública al código fuente del proyecto una vez finalizado.
+- **Control de Versiones**: Finalmente, para garantizar la integridad del código y facilitar el desarrollo iterativo, se ha utilizado *Git* junto con *GitHub* como repositorio remoto. Esto no solo ha servido para el control de versiones, sino para dar visibilidad pública al código fuente del proyecto una vez finalizado.
 
 ## Metodología
 
-Utilizaremos la metodología de desarrollo CRISP-DM (Cross Industry Standard Process for Data Mining) que es un marco ampliamente utilizado para proyectos de Ciencias de Datos. En la siguiente figura se presenta un diagrama con las diferentes fases de esta metodología que a continuación describimos con más detalle: 
+Utilizaremos la metodología de desarrollo *CRISP-DM* (Cross Industry Standard Process for Data Mining) que es un marco ampliamente utilizado para proyectos de Ciencias de Datos. En la siguiente figura se presenta un diagrama con las diferentes fases de esta metodología que a continuación describimos con más detalle: 
 
 <center>
 <img src="https://ctim.es/AEDV/1200px-CRISP-DM_Process_Diagram1.5x.png" width="40%" />
@@ -689,10 +716,10 @@ El análisis de los datos realizado para la validación del tema del proyecto pe
 Para garantizar la idoneidad de los datos respecto a los objetivos de la asignatura y la capacidad de cómputo disponible, se estableció un protocolo de búsqueda y selección estructurado en tres fases:  
 
 #### Fase 1: Filtrado Cuantitativo y Dimensional  
-Partiendo del repositorio de fuentes oficiales proporcionado por la docencia, se aplicó un primer filtro basado en requisitos técnicos y dimensionales. Se priorizaron conjuntos de datos con una extensión temporal significativa (series temporales largas) y un volumen de observaciones manejable pero suficiente para el análisis profundo (rango objetivo entre 10 mil y 10 mill registros). Este criterio aseguró un equilibrio entre la riqueza de información y la viabilidad del procesamiento computacional.
+Partiendo del repositorio de fuentes oficiales proporcionado por la docencia, se aplicó un primer filtro basado en requisitos técnicos y dimensionales. Se priorizaron conjuntos de datos con una extensión temporal significativa (series temporales largas) y un volumen de observaciones manejable pero suficiente para el análisis profundo (rango objetivo entre 10 mil y 10 mill. registros). Este criterio aseguró un equilibrio entre la riqueza de información y la viabilidad del procesamiento computacional.
 
 #### Fase 2: Evaluación Temática y Potencial Analítico  
-Sobre los datasets resultantes, se realizó una exploración cualitativa asistida por herramientas de Inteligencia Artificial (LLMs) para analizar rápidamente los metadatos y descripciones. El objetivo fue identificar temáticas con alto potencial narrativo y relevancia socioeconómica.Se cruzaron las características de los candidatos con los contenidos teóricos del manual de la asignatura (Introducción al Análisis de Datos y Visualización), buscando variables que permitieran aplicar las técnicas de visualización avanzad as (mapas, series temporales, comparativas categóricas) exigidas en el proyecto.
+Sobre los datasets resultantes, se realizó una exploración cualitativa asistida por herramientas de Inteligencia Artificial para analizar rápidamente los metadatos y descripciones. El objetivo fue identificar temáticas con alto potencial narrativo y relevancia socioeconómica. Se cruzaron las características de los candidatos con los contenidos teóricos del manual de la asignatura, buscando variables que permitieran aplicar las técnicas de visualización avanzadas (mapas, series temporales, comparativas categóricas) exigidas en el proyecto.
 
 #### Fase 3: Validación Normativa y Selección Definitiva  
 Tras la preselección de un primer candidato y su posterior descarte por no ajustarse estrictamente a la totalidad de los requisitos de la rúbrica (específicamente en la granularidad de las variables), se procedió a la elección final del dataset `nama_10r_2lp10`. Este conjunto de datos superó la validación final al cumplir con todos los criterios: estructura tidy, presencia de variables categóricas y numéricas, desglose geográfico (NUTS 2) y una serie temporal completa (1995-2023), permitiendo el análisis multinivel (Europa-España-Canarias) propuesto.
@@ -1039,7 +1066,6 @@ Tras el procesado, el dataset resultante consta de las siguientes variables dime
 - Variables Temporales: `year` (Serie 1995-2023).  
 - Variables Categóricas: `sector` y `sector_name` (Rama de actividad).  
 - Variables Métricas: `item` (Indicador), `unit` (Unidad de medida) y `values` (Valor numérico). Es importante destacar que el Coste laboral por hora trabajada es el único indicador que ofrece granularidad completa por sector; el resto de métricas (Coste por persona y Horas trabajadas) se presentan únicamente como valores agregados (Total).. 
-
 ```{r analisis-data-raw, results=F}
 data_raw <- read_csv('data/nama_10r_2lp10.csv') %>% 
     as_tibble()
@@ -1089,17 +1115,21 @@ geoj1.tb <- geoj1 %>% as_tibble()
 geoj2.tb <- geoj2 %>% as_tibble()
 ```
 
-<br>
+#### Definición del Indicador Clave: Coste Laboral
+
+El eje central de este estudio es el Coste Laboral (representado en las gráficas como Coste por hora o Coste por empleado). Es fundamental aclarar que esta métrica refleja la **perspectiva del empleador**, no el bolsillo del empleado.  
+
+Representa el coste total en el que incurre una empresa para emplear mano de obra. Esto abarca no solo la remuneración bruta (salarios y sueldos), sino también los costes no salariales, como las contribuciones sociales a cargo del empleador, impuestos laborales y otros gastos derivados.  
+
+No debe confundirse con el salario neto que percibe el trabajador en su cuenta bancaria.  
 
 #### Introducción: La Paradoja Europea
 
-Tras completar la limpieza, normalización y enriquecimiento del dataset, dejamos atrás la ingeniería de datos para adentrarnos en el análisis exploratorio. Nuestro objetivo en esta primera fase no es solo describir qué pasa, sino entender por qué España ocupa su posición actual.  
-
-Para diagnosticar la situación salarial en Canarias y España, primero necesitamos elevar la mirada y observar el contexto macroeconómico. Europa actúa aquí como un espejo de contrastes: nos permite comparar nuestro desempeño no contra un ideal teórico, sino contra la realidad de nuestros vecinos.  
+El objetivo de esta fase inicial no es solo describir los datos, sino comprender por qué España ocupa su posición actual. Para diagnosticar la realidad salarial en Canarias y el resto del país, es necesario ampliar el foco y observar primero el contexto macroeconómico. En este sentido, Europa actúa como un marco de referencia esencial: nos permite evaluar nuestro desempeño contrastándolo no con ideales teóricos, sino con la realidad tangible de los países de nuestro entorno.
 
 La narrativa popular a menudo asocia la baja remuneración con una supuesta "falta de cultura del esfuerzo". Sin embargo, los datos sugieren una paradoja fundamental que será el hilo conductor de este capítulo: **en Europa, trabajar más horas no significa generar más riqueza; a menudo, significa lo contrario**.  
 
-A través de las siguientes visualizaciones, estableceremos la "Tesis de la Eficiencia": demostraremos que existe una correlación negativa entre el presencialismo (horas trabajadas) y la productividad (coste por hora), y ubicaremos a España en este tablero de juego antes de hacer zoom en sus regiones.  
+A través de las siguientes visualizaciones, estableceremos la "Tesis del presencialismo": demostraremos que existe una correlación negativa entre las horas trabajadas y el coste por hora, y ubicaremos a España en este tablero de juego antes de hacer zoom en sus regiones.  
 <br>
 
 Para comprender la posición actual de España, primero debemos analizar la inercia histórica. ¿Cómo han evolucionado los costes laborales en las últimas dos décadas?  
@@ -1116,7 +1146,10 @@ tb_top_evol <- data %>%
     arrange(mean_value)
 
 p <- tb_top_evol %>% mutate(full_name = factor(full_name, levels=(unique(full_name)))) %>% 
-    ggplot(aes(x=year,y=mean_value)) +
+    ggplot(aes(x=year,y=mean_value, group = full_name,
+               text=paste0("<b>", full_name, "</b>",
+                          "<br>Año: ", year,
+                          "<br>Coste/Hora: ", round(mean_value, 2), "€"))) +
     geom_line() +
     labs(x="",y="", title="Evolución del coste por hora trabajada") +
     facet_wrap(~full_name, scales = "free_y") +
@@ -1125,7 +1158,7 @@ p <- tb_top_evol %>% mutate(full_name = factor(full_name, levels=(unique(full_na
         panel.grid.major = element_blank() # Elimina las líneas principales del grid
     )
 
-ggplotly(p)
+ggplotly(p, tooltip = "text")
 ```
 
 Esta visualización desglosa la evolución del coste por hora trabajada (2000-2022) mediante una serie de gráficos facetados.  
@@ -1143,14 +1176,21 @@ tb <- geoj0.tb %>%
         join_by("NUTS_ID" == "geo")
         )
 
+indices_validos <- !is.na(tb$values)
+
+datos_filtrados <- tb[indices_validos, ]
+
+geoj_filtrado <- geoj0[indices_validos, ]
+
+
 etiquetas <-paste(
-    "<strong> ",tb$full_name ,
+    "<strong> ",datos_filtrados$full_name ,
     "</strong><br>","Coste laboral por persona empleada",
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
+    ": ",prettyNum(round(datos_filtrados$values,digits=2), big.mark = " ", scientific = FALSE)
   )  %>%
  lapply(htmltools::HTML)
 
-MapaCoroplético(geoj0, tb$values, etiquetas,"Valor (año 2022)")
+MapaCoroplético(geoj_filtrado, datos_filtrados$values, etiquetas,"Coste laboral / persona (año 2022)")
 ```
 
 El gradiente de color revela inmediatamente una frontera económica nítida: un "núcleo duro" europeo (Escandinavia, Benelux, Alemania, Francia) teñido de tonos cálidos que indican altos costes salariales, frente a una periferia sur y este que se diluye en tonos amarillos. En este tablero, España se encuentra en una incómoda "tierra de nadie": nuestros costes son superiores a los de Europa del Este, lo que nos impide competir por mano de obra barata, pero seguimos lejos de los estándares del norte, impidiéndonos competir por alto valor añadido.  
@@ -1192,7 +1232,7 @@ tb_combined <- bind_rows(tb_top, tb_bottom) %>%
 
 p_final <- tb_combined %>%
     # x es el país (ordenado), y es el valor
-    ggplot(aes(x = full_name, y = mean_hours_week, fill = full_name, text = paste("País:", full_name, "<br>Horas:", round(mean_hours_week, 1)))) +
+    ggplot(aes(x = full_name, y = mean_hours_week, fill = full_name, text = paste("<b>", full_name, "</b>",  "<br>Horas semanales en promedio:", round(mean_hours_week, 1)))) +
     
     geom_bar(stat = "identity") +
     
@@ -1242,7 +1282,7 @@ Al analizar la carga laboral semanal promedio, los datos desmontan radicalmente 
 <br>
 Tenemos dos piezas del puzle que parecen contradictorias: los países ricos trabajan menos horas, y los países que trabajan más horas son más pobres. ¿Qué ocurre si cruzamos estas dos variables en un solo gráfico para ver su interacción directa?
 
-```{r scatter}
+```{r scatter, fig.height=6}
 data_scatter <- data %>%
   # Filtramos solo Países (NUTS 0) y el total de la economía
   filter(full_name %in% seleccion_paises, sector == "TOTAL", year>=2000, year<2023) %>% 
@@ -1270,18 +1310,18 @@ p <- data_scatter %>%
     size = D1_SAL_PER,   # Tamaño según coste total anual
     frame = year,        # Esto crea la animación por año
     ids = full_name,     # ¡Importante! Para que la burbuja se mueva suave y no parpadee
-    text = paste("País:", full_name, 
-                 "<br>Año:", year,
-                 "<br>Horas/Año:", round(HW_EMP, 0),
-                 "<br>Coste/Hora:", round(D1_SAL_HW, 2), "€") # Tooltip bonito
+    text = paste0("<b>", full_name, "</b>",
+                 "<br>Año: ", year,
+                 "<br>Horas/Año: ", round(HW_EMP, 0),
+                 "<br>Coste/Hora: ", round(D1_SAL_HW, 2), "€") # Tooltip bonito
   ), alpha = 0.7) +
   
   # Escalas y Títulos
-  # scale_size(range = c(2, 15)) + # Ajustamos tamaño burbujas min/max
+  scale_size(range = c(2, 17)) + # Ajustamos tamaño burbujas min/max
   labs(
     x = "Horas Trabajadas por Empleado (Año)",
     y = "Coste Laboral por Hora (€)",
-    title = "Eficiencia vs Presencialismo en Europa",
+    title = "Horas trabajadas vs Coste por hora en Europa",
     color = "País",
     size = ""
   ) +
@@ -1296,10 +1336,17 @@ ggplotly(p, tooltip = "text") %>%
     transition = 550,  # Duración del movimiento suave
     easing = "linear"
   ) %>%
-  layout(title = list(text = "<b>Eficiencia vs Presencialismo:</b> Evolución Europea (2000-2022)"))
+  layout(
+    title = list(
+      text = "<b>Horas trabajadas vs Coste laboral:</b> Evolución Europea (2000-2022)",
+      x = 0.5,
+      xanchor = "center"
+    ))
 ```
 
-Esta visualización es la piedra angular del capítulo. Al cruzar el coste laboral por hora (eje Y) con las horas trabajadas por empleado al año (eje X), emerge una clara correlación negativa: los países se alinean en una pendiente descendente. Las naciones más eficientes, como Luxemburgo o Dinamarca, se agrupan en la esquina superior izquierda (alto valor, pocas horas), mientras que a medida que nos desplazamos hacia la derecha (más horas), el valor generado cae. España (la esfera morada en la zona inferior) queda relegada al cuadrante de "baja eficiencia": muchas horas de trabajo para un retorno por hora bajo. Además, la animación temporal revela cómo el COVID-19 provocó un salto generalizado hacia la izquierda en 2020, una anomalía de reducción forzosa de horas que no debe confundirse con un aumento estructural de la productividad.  
+Esta visualización es la piedra angular del capítulo. Para interpretarla correctamente, debemos fijarnos en la dirección y el volumen: cuanto más arriba se sitúe un país, mayor es la remuneración por hora (eje Y), y cuanto más a la izquierda, menos horas se trabajan al año (eje X). Además, el tamaño de cada esfera es proporcional a ese coste: una bola grande indica un alto valor por hora, mientras que una pequeña señala precariedad.  
+
+Al cruzar estas variables, emerge una clara correlación negativa: los países se alinean en una pendiente descendente. Las naciones más eficientes, como Luxemburgo o Dinamarca, se agrupan en la esquina superior izquierda (bolas grandes y pocas horas), mientras que a medida que nos desplazamos hacia la derecha, el valor generado cae y las esferas se hacen más pequeñas. España (la esfera morada en la zona inferior) queda relegada al cuadrante de "baja eficiencia": muchas horas de trabajo para un retorno por hora bajo. Finalmente, la animación temporal revela cómo el COVID-19 provocó un salto generalizado hacia la izquierda en 2020, una anomalía de reducción forzosa de horas que no debe confundirse con un aumento estructural de la productividad.
 
 <br>
 Ya hemos demostrado que el problema no es la cantidad de trabajo, sino el valor que generamos en ese tiempo. Pero, ¿es este bajo coste un problema generalizado en toda la economía o hay sectores que se salvan?
@@ -1316,7 +1363,8 @@ p <- data %>%
   # Rotamos los nombres del eje X para que se lean bien
   theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "none") +
   
-  labs(x = "", y = "Coste por hora trabajada (€)")
+  labs(x = "", y = "Coste por hora trabajada (€)",
+       title = "Distribución del Coste Laboral por Hora en Europa")
 
 ggplotly(p)
 ```
@@ -1359,9 +1407,9 @@ p <- top_countries %>%
     ggplot(aes(reorder(full_name, -mean_value), sector_name, 
                # Renombramos aquí para el FILL, y también añadimos TEXT para el tooltip
                fill = mean_value, 
-               text = paste("País:", full_name,
-                            "<br>Sector:", sector_name,
-                            "<br>Coste:", round(mean_value, 2), "€/Hora"))) +
+               text = paste0("<b>", full_name, "</b>",
+                            "<br>Sector: ", sector_name,
+                            "<br>Valor :", round(mean_value, 2), "%"))) +
     
     # También podemos simplificar estas dos líneas, ya que no vamos a resaltar nada
     # geom_tile(aes(color = sector_name == "Total actividades"), linewidth = 0.75) +
@@ -1371,14 +1419,15 @@ p <- top_countries %>%
     geom_tile() +
     
     scale_fill_gradient(low = "white", high = "steelblue") +
-    labs(x = "", y = "", title = "Coste laboral medio por sector y país (2018-23)",fill = "Valor medio") +
+    labs(x = "", y = "", title = "Coste laboral medio por sector y país (2018-23)",fill = "Índice (UE27 = 100)") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggplotly(tooltip = "text")
 ```
 
-Si el diagrama de cajas nos sugería un problema general, este mapa de calor confirma que la desventaja es estructural y relativa. Para este análisis, hemos utilizado la variable `PC_EU27_2020_MEUR_CP`, que normaliza los datos como un porcentaje respecto al total de la UE27. Esto es fundamental porque elimina el sesgo de la riqueza absoluta: no estamos viendo simplemente qué países son más ricos, sino cómo rinde cada sector en comparación con el estándar europeo.  
-El resultado es un degradado vertical implacable: las columnas de la izquierda (Luxemburgo, Dinamarca) muestran tonos oscuros intensos, indicando que sus sectores rinden muy por encima de la media europea. A medida que la vista recorre hacia la derecha, el color se desvanece hasta la palidez de España e Italia. El insight más doloroso de este gráfico es que desmonta la idea de que "basta con cambiar de sector". Incluso si comparamos filas idénticas, como "Información y comunicación" o "Profesionales y científicas" (sectores tradicionalmente de alto valor), vemos que en España tienen una intensidad de color muy inferior a sus homólogos del norte. No es solo que tengamos sectores "peores", es que nuestros sectores "buenos" generan y retribuyen mucho menos valor que los mismos sectores en Europa.  
+Si el diagrama de cajas nos sugería un problema general, este mapa de calor confirma que la desventaja es estructural y relativa. Para este análisis, hemos utilizado un índice normalizado donde 100 representa la media de la UE-27. La interpretación es directa: cualquier valor superior a 100 indica que el sector rinde por encima del estándar europeo, mientras que valores inferiores señalan una desventaja competitiva.
+
+El resultado es un degradado vertical implacable: mientras las columnas de la izquierda (Luxemburgo, Dinamarca) acumulan valores muy superiores a 100, el dato más revelador para nuestro estudio es que España presenta valores inferiores a 100 en prácticamente toda la matriz. Esto significa que no tenemos ningún sector que actúe como "punta de lanza" real; incluso nuestras industrias de alto valor añadido operan sistemáticamente por debajo del promedio continental en términos de coste y valoración relativa.
 
 <br>
 Europa nos ha enseñado que trabajar más horas no es la solución. España está atrapada en un modelo de alto presencialismo y bajo valor añadido. Para entender cómo hemos llegado aquí y si hay esperanza de cambio, necesitamos dejar el mapa europeo y hacer zoom sobre nuestra propia historia reciente.
@@ -1446,9 +1495,9 @@ df_snail <- data %>%
 p_snail <- df_snail %>%
   # Mapeamos el color y el label al año
   ggplot(aes(x = HW_EMP, y = D1_SAL_HW, color = year, group = 1,
-             text = paste("Año:", year,
-                          "<br>Horas:", round(HW_EMP, 0),
-                          "<br>Coste/Hora:", round(D1_SAL_HW, 2), "€"))) +
+             text = paste0("Año: ", year,
+                          "<br>Horas: ", round(HW_EMP, 0),
+                          "<br>Coste/Hora: ", round(D1_SAL_HW, 2), "€"))) +
   
   # 2.1. El camino que conecta los años cronológicamente
   geom_path(color = "gray", linewidth = 0.8) +
@@ -1501,7 +1550,9 @@ Si el "caracol" anterior nos mostraba un crecimiento promedio lento, este gráfi
   marker = list(enabled = TRUE, symbol = "circle", radius = 3)
 )
   
-hc
+hc %>% hc_title(text = "Evolución del Coste Laboral por Sector (España)") %>%
+    hc_xAxis(title = list(text = "Año")) %>% 
+    hc_yAxis(title = list(text = "Coste por hora trabajada (€)"))
 ```
 
 En la parte superior, sectores como Finanzas (línea verde oscura superior) y las Industrias Extractivas/Energía han escalado posiciones con fuerza, alcanzando costes por hora superiores a los 40€, cifras que empiezan a competir con Europa. Sin embargo, la gravedad de la estructura productiva española se hace evidente en la parte inferior de la gráfica: una maraña de líneas planas que agrupan a sectores masivos como la Hostelería (Comercio y alojamiento) y la Agricultura. Estos sectores apenas han logrado despegar de la franja de los 10€ - 15€ por hora en más de dos décadas.
@@ -1515,49 +1566,6 @@ Pero, ¿dónde se ubican físicamente estos sectores? ¿Están distribuidos unif
 #### Heterogeneidad Geográfica
 
 Al descender del nivel nacional al regional, confirmamos que España no es una economía monolítica, sino un puzle de realidades divergentes. Si en Europa vimos una brecha Norte-Sur, es crucial verificar si ese patrón se replica dentro de nuestras fronteras. Para ello, vamos a confrontar directamente dos variables que la narrativa popular suele unir: lo que ganamos (riqueza) frente a lo que trabajamos (esfuerzo).  
-
-```{verbatim mapa-coropletico-costeES}
-geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
-geoj_esp.tb <- geoj_esp %>% as_tibble()
-
-tb <- geoj_esp.tb %>% 
-    left_join(
-        data %>% 
-        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="D1_SAL_PER", unit=="EUR", year==2023, sector=="TOTAL") %>% 
-        na.omit(),
-        join_by("NUTS_ID" == "geo")
-        )
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>","Coste laboral por persona empleada",
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
-MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
-```
-```{verbatim mapa-coropletico-horasES}
-geoj_esp <- geoj2[substr(geoj2$NUTS_ID, 1, 2) == "ES", ]
-geoj_esp.tb <- geoj_esp %>% as_tibble()
-
-tb <- geoj_esp.tb %>% 
-    left_join(
-        data %>% 
-        filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item=="HW_EMP", unit=="HW", year==2023, sector=="TOTAL") %>% 
-        na.omit(),
-        join_by("NUTS_ID" == "geo")
-        )
-
-etiquetas <-paste(
-    "<strong> ",tb$full_name ,
-    "</strong><br>","Horas trabajadas anuales",
-    ": ",prettyNum(round(tb$values,digits=2), big.mark = " ", scientific = FALSE)
-  )  %>%
- lapply(htmltools::HTML)
-
-MapaCoropléticoES(geoj_esp, tb$values, etiquetas,"Valor (año 2023)")
-```
 
 ```{r mapas-comparativos}
 # Preparación de datos (Coste Persona)
@@ -1627,33 +1635,36 @@ htmltools::div(
 ```
 
 Al colocar estos dos mapas frente a frente, emerge un patrón revelador: existe una correlación visual inversa. Lo que es oscuro en un mapa, tiende a ser claro en el otro, y viceversa.  
-- El Mapa de la Riqueza (Izquierda): El cuadrante noreste y Madrid aparecen en tonos oscuros y rojizos, señalando las zonas de mayor coste laboral y riqueza.  
-- El Mapa del Esfuerzo (Derecha): Justo esas mismas zonas "ricas" (Madrid, País Vasco) se tiñen aquí de tonos más claros (amarillos), indicando jornadas laborales más cortas. Por el contrario, las zonas que en el mapa de riqueza aparecían pálidas (Castilla-La Mancha, Murcia, Extremadura), aquí se oscurecen hacia el rojo, indicando jornadas más largas.  
+
+- **El Mapa de la Riqueza (Izquierda):** El cuadrante noreste y Madrid aparecen en tonos oscuros y rojizos, señalando las zonas de mayor coste laboral y riqueza.  
+
+- **El Mapa del Esfuerzo (Derecha):** Justo esas mismas zonas "ricas" (Madrid, País Vasco) se tiñen aquí de tonos más claros (amarillos), indicando jornadas laborales más cortas. Por el contrario, las zonas que en el mapa de riqueza aparecían pálidas (Castilla-La Mancha, Murcia, Extremadura), aquí se oscurecen hacia el rojo, indicando jornadas más largas.  
 
 La imagen es contraintuitiva pero clara: las regiones más ricas son las que menos horas trabajan. Madrid, la "isla de calor" salarial, es una zona "fría" en horas. En cambio, regiones con menor renta como Canarias o el sur peninsular presentan colores más intensos en esfuerzo. Esto demuestra que la pobreza relativa no es fruto de la pereza; de hecho, las regiones con menor coste laboral tienden a compensar su menor productividad estructural con un mayor presencialismo.  
 
-```{r boxplot-sectores-NUTS1}
+```{r boxplot-sectores-NUTS2}
 p <- data %>%
   # Filtramos países, el indicador de Salario por Persona y aseguramos Euros
-  filter(substr(geo, 1, 2) == "ES" & NUTS == 1, item == "D1_SAL_HW", unit == "EUR") %>%
+  filter(substr(geo, 1, 2) == "ES" & NUTS == 2, item == "D1_SAL_HW", unit == "EUR", !full_name %in% c("Ciudad de Melilla", "Ciudad de Ceuta")) %>%
   
   ggplot(aes(x = reorder(full_name,-values), y = values, fill = full_name)) +
   
   geom_boxplot() +
+  #coord_flip() +
   
   # Rotamos los nombres del eje X para que se lean bien
   theme(axis.text.x = element_text(angle = 45, hjust = 1),legend.position = "none") +
   
-  labs(x = "", y = "Coste por hora trabajada (€)")
+  labs(x = "", y = "Coste por hora trabajada (€)", title = "Distribución del Coste Laboral por Hora en España")
 
 ggplotly(p)
 ```
 
-Confirmado que trabajar más no nos hace más ricos, miramos la estructura de los salarios. Este diagrama de cajas nos revela la "calidad" de la desigualdad.  
-- La Oportunidad en el Centro: La caja de Madrid (izquierda, verde) es alta y con numerosos outliers disparándose hacia arriba. Aunque hay salarios bajos, existe un "ascensor" claro hacia sueldos muy altos (>40€/hora).  
-- El Techo Canario: En el extremo derecho, Canarias (rojo) narra una historia de compresión. No solo su mediana es la más baja, sino que su caja es compacta y carece de esos outliers superiores.  
+Este diagrama de cajas desagrega la realidad nacional por Comunidades Autónomas, permitiéndonos observar la dispersión real de los salarios dentro de cada territorio. La jerarquía es clara y dolorosa.  
 
-El drama de Canarias no es solo tener una media baja; es el "techo de cristal regional". La estructura económica comprime los salarios: incluso los trabajadores de élite en las islas apenas alcanzan los niveles medios de Madrid. No hay dispersión hacia la riqueza.  
+- **La Élite Salarial:** En la parte izquierda, *Comunidad de Madrid*, *País Vasco* y *Navarra* lideran el ranking con las medianas más altas. Pero lo más relevante es la altura de sus cajas y los "bigotes" superiores. Fijaos en la nube de puntos negros (outliers) sobre Madrid: indican que existe un segmento del mercado laboral capaz de alcanzar costes muy superiores a los 40€/hora. Allí, el ascensor social hacia salarios altos funciona.  
+
+- **El Vagón de Cola:** En el extremo derecho, encontramos a *Extremadura*, *Murcia* y *Canarias*. En el caso específico de Canarias, la caja no solo está situada abajo (mediana rondando los 16€), sino que está "comprimida". A diferencia de Madrid, Canarias apenas tiene dispersión hacia arriba; sus outliers son escasos. Esto confirma la existencia de un "techo de cristal regional". En Canarias, la estructura económica comprime los salarios en una franja estrecha y baja. Incluso los perfiles mejor pagados de las islas tienen dificultades para superar la mediana de las comunidades con mejor remuneración.  
 
 <br>
 El análisis geográfico ha sido devastador para el prejuicio del esfuerzo. Hemos visto una inversión de roles: las zonas ricas trabajan menos y las zonas "pobres" trabajan más. Canarias se esfuerza tanto o más que el norte, pero su estructura actúa como una losa que impide que ese tiempo se traduzca en valor.  
@@ -1692,7 +1703,11 @@ p_donut_dinamico <- tb_plotly %>%
     # Configuración de texto y orientación (como en tu ejemplo)
     textinfo = 'label+percent',
     insidetextorientation = 'radial',
-    hoverinfo = 'label+percent+value' # Tooltip personalizado
+    hovertemplate = paste(
+        "<b>%{label}</b><br>",
+        "Coste por hora: %{value:,.2f}€<br>",
+        "Porcentaje: %{percent}<extra></extra>"
+        )
   ) %>%
   
   # Añadimos el agujero y quitamos la leyenda para dejar el gráfico limpio
@@ -1709,11 +1724,12 @@ p_donut_dinamico <- tb_plotly %>%
 ggplotly(p_donut_dinamico)
 ```
 
-Para entender el problema, primero miremos la estructura base de España. Este gráfico por secciones muestra cómo se reparte la masa salarial del país. A primera vista, vemos sectores potentes: Finanzas lidera con un 11.5%, seguido de la Administración Pública.  
-Sin embargo, si sumamos los sectores tradicionalmente asociados a menor valor añadido o menor escalabilidad tecnológica —Comercio y transporte (6.51%), Comercio y alojamiento (6.2%) y Construcción (6.68%)—, obtenemos un bloque masivo de la economía (casi el 20% del coste laboral total) que depende de la presencialidad física y tiene márgenes más ajustados. España no es una economía puramente tecnológica; tiene un "lastre" estructural importante en servicios de bajo valor. Pero, ¿se reparte este lastre por igual en todo el territorio?  
+Para entender el problema, analicemos la estructura de precios de la economía española. Este gráfico de anillo no representa el volumen de empleo ni el PIB, sino el **peso relativo del coste por hora de cada sector** en el conjunto de la oferta económica. Es decir, visualiza qué sectores son "caros" y cuáles "baratos".  
+
+Observamos una clara jerarquía de valor. El sector Finanzas (11.5%) y la Información y Comunicación (8.85%) ocupan una porción significativa del gráfico. Esto indica que son actividades con un alto coste unitario: su hora de trabajo se cotiza muy por encima de la media. En contraposición, sectores masivos como Agricultura (2.57%), Hostelería (Comercio y alojamiento, 6.2%) o Artes (5.01%) tienen un peso relativo mucho menor. Esto revela que su hora de trabajo aporta un valor monetario unitario mucho más bajo al total nacional.  
 
 <br>
-Aquí es donde la media nacional vuelve a engañarnos. Ese 11.5% de riqueza financiera no está esparcido uniformemente como la mantequilla; está concentrado en puntos muy específicos. Vamos a cruzar el sector con la región para ver la "radiografía" completa.
+Sin embargo, este gráfico nos muestra una "España media" que no existe en la realidad. La pregunta clave es: ¿Están estas "porciones caras" del anillo repartidas equitativamente por el país, o están acaparadas por unas pocas regiones? Para descubrirlo, necesitamos desenrollar este gráfico y proyectar el coste de cada sector sobre el mapa de las Comunidades Autónomas.  
 
 ```{r mapa-calor-sectores-CCAA}
 top_comunidades_ES <- data %>% 
@@ -1728,9 +1744,9 @@ p <- top_comunidades_ES %>%
     ggplot(aes(reorder(full_name, -mean_value), sector_name, 
                # Renombramos aquí para el FILL, y también añadimos TEXT para el tooltip
                fill = mean_value, 
-               text = paste("Comunidad_:", full_name,
-                            "<br>Sector:", sector_name,
-                            "<br>Coste:", round(mean_value, 2), "€/Hora"))) +
+               text = paste0("<b>", full_name, "</b>",
+                            "<br>Sector: ", sector_name,
+                            "<br>Coste: ", round(mean_value, 2), "€/Hora"))) +
     
     # También podemos simplificar estas dos líneas, ya que no vamos a resaltar nada
     # geom_tile(aes(color = sector_name == "Total actividades"), linewidth = 0.75) +
@@ -1740,7 +1756,7 @@ p <- top_comunidades_ES %>%
     geom_tile() +
     
     scale_fill_gradient(low = "white", high = "steelblue") +
-    labs(x = "", y = "", title = "Coste laboral medio por sector y CCAA (2018-23)",fill = "Valor medio") +
+    labs(x = "", y = "", title = "Coste laboral medio por sector y CCAA (2018-23)", fill = "Coste por hora") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggplotly(tooltip = "text")
@@ -1754,8 +1770,51 @@ La pregunta final es inevitable. Si ya sabemos que el sector es el destino... ¿
 
 #### Conclusión: El Caso de Canarias
 
-Hemos viajado desde los datos macroeconómicos de Europa hasta las entrañas de la estructura sectorial española. Todas las pruebas apuntan a una conclusión: la baja remuneración no es un castigo divino ni geográfico, sino la consecuencia matemática de una especialización en actividades de bajo valor.  
-Ahora, aplicamos todo lo aprendido al paciente cero: Canarias. Si nuestra tesis es correcta, el archipiélago no debería ser simplemente "más pobre", sino que debería mostrar los síntomas agudos de una estructura enferma: una brecha creciente con el continente y una incapacidad sistémica para generar valor, incluso trabajando las mismas horas.  
+Hemos viajado desde los datos macroeconómicos del continente hasta la estructura sectorial nacional. Ahora, aterrizamos en el "paciente cero" de nuestra tesis: **Canarias**. Si nuestra hipótesis es correcta —que el problema es el modelo productivo y no el trabajador—, los datos deberían mostrar una región que se esfuerza tanto o más que Europa, pero cuyo retorno económico se estanca, desacoplándose de los estándares de bienestar continentales.
+
+```{r horas-trabajadas-evolucion}
+tb <- data %>%
+  filter(
+    geo %in% c("ES", "ES7", "EU27_2020"),
+    item == "HW_EMP",
+    unit == "HW"
+  ) %>%
+  mutate(
+    full_name = case_when(
+      geo == "ES7" ~ "Canarias",
+      geo == "ES" ~ "España",
+      geo == "EU27_2020" ~ "Media UE",
+      TRUE ~ full_name
+    )
+  )
+
+# Colores personalizados
+colores <- c(
+  "Canarias" = "red",
+  "España" = "#1F77B4",
+  "Media UE" = "lightgreen"
+)
+
+p <- ggplot(tb, aes(x = year, y = values, color = full_name, group = full_name, 
+                    text = paste("<b>",full_name,"</b>",
+                                 "<br>Año:", year,
+                                 "<br>Horas anuales:", values,
+                                 "<br>Horas semanales:", round(values / 52.18, 1)))) +
+  geom_line(linewidth = 0.8) +
+  scale_color_manual(values = colores) +
+  labs(
+    title = "Evolución de las horas trabajadas anuales por empleado",
+    x = "Año",
+    y = "Horas",
+    color = "Región"
+  )
+
+ggplotly(p, tooltip = "text")
+```
+
+Comenzamos el juicio final presentando la prueba definitiva de la defensa. Este gráfico compara la evolución de las horas trabajadas por empleado en Canarias (rojo), España (azul) y la media de la Unión Europea (verde).  
+
+El resultado destruye el mito de la "pereza meridional". Históricamente, **Canarias ha trabajado sistemáticamente más horas que la media europea**. Mientras la línea verde de la UE muestra una tendencia descendente clara hacia la eficiencia (trabajar menos horas), la línea roja de Canarias se mantiene por encima, resistiéndose a bajar de las 1.650 horas anuales (salvo el shock del COVID en 2020). Por tanto, concluimos que el trabajador canario dedica más tiempo a su empleo que el europeo promedio. La pobreza salarial no es fruto de la falta de dedicación.  
 
 ```{r brecha-salario-ESIC}
 # --- 1. PREPARACIÓN DE DATOS (WIDE y LONG) ---
@@ -1792,16 +1851,14 @@ p_brecha_final <- df_brecha_wide %>%
   
   # AÑADIDO: Puntos y Tooltip
   geom_point(data = df_brecha_long, aes(y = Valor, color = Región,
-                                        
-                                        # Tooltip Solicitado
-                                        text = paste("Región:", Región,
-                                                     "<br>Año:", year,
-                                                     "<br>Coste/Persona:", round(Valor, 0), "€")
+                                        text = paste0("<b>", Región, "</b>",
+                                                     "<br>Año: ", year,
+                                                     "<br>Coste/Persona: ", round(Valor, 0), "€")
                                         ), size = 2) + # Tamaño del punto más visible
   
   # Labels y Estilo
   labs(
-    title = "Evolución de la Brecha Salarial: Coste por Empleado (España vs. Canarias)",
+    title = "<b>Evolución de la Brecha Salarial:</b> Coste por Empleado (España vs. Canarias)",
     y = "Coste por Persona Empleada (€)",
     x = "Año",
     color = "Región"
@@ -1815,12 +1872,75 @@ p_brecha_final <- df_brecha_wide %>%
 ggplotly(p_brecha_final, tooltip = "text")
 ```
 
-Para entender la magnitud del problema, primero debemos mirar la película completa. Este gráfico de área no muestra simplemente salarios, muestra la distancia entre ser empleado en la Península (azul) y serlo en las Islas (rojo).  
+Descartado el esfuerzo, miramos el resultado monetario. Este gráfico de área visualiza la distancia entre ser empleado en la Península (azul) y serlo en las Islas (rojo).
 
-Lo dramático de esta imagen es la tendencia. A principios de los 2000, las líneas caminaban relativamente cerca. Sin embargo, tras la crisis de 2008, se produce una ruptura: España recupera ritmo mientras Canarias se aplana. La "boca" del gráfico se abre cada vez más, convirtiendo lo que era una diferencia regional en un abismo estructural. Hoy, la brecha es la más grande de la serie histórica. Canarias no está convergiendo con el resto del país; se está desacoplando económicamente.  
+La imagen revela un desacople progresivo. A principios de los 2000, las líneas caminaban paralelas. Sin embargo, tras la crisis financiera de 2008, la "boca" del gráfico se abre dramáticamente. Mientras España recupera tracción y supera los 30.000€ de coste por empleado, Canarias se queda rezagada, ampliando la zona naranja (la brecha) año tras año. Esto confirma que la convergencia regional se ha roto: la insularidad económica pesa cada vez más.
+
+Transición: Ya sabemos que perdemos contra España. Pero, si levantamos la vista y nos comparamos con el estándar europeo ("Gold Standard"), ¿en qué sectores estamos perdiendo realmente?
 
 <br>
-Sabemos que ganamos menos y que cada vez nos alejamos más. Pero, ¿nos alejamos en todo? ¿O es que hay sectores donde "perdemos más" que en otros?
+Ya sabemos que perdemos contra España. Pero, si levantamos la vista y nos comparamos con el estándar europeo ("Gold Standard"), ¿en qué sectores estamos perdiendo realmente?
+
+```{r sectores-wrapped-ESIC, fig.height=6}
+# --- 1. PREPARACIÓN DE DATOS BASE ---
+df_facet <- data %>%
+  filter(
+    # Filtramos por España y Canarias (NUTS 0 y NUTS 2)
+    (full_name %in% c("Spain") & NUTS == 0) | 
+    (full_name %in% c("Canarias") & NUTS == 2) |
+    (geo == "EU27_2020"),
+    item == "D1_SAL_HW",
+    unit == "EUR",
+    sector != "TOTAL" # Excluimos el total para ver los sectores individuales
+  ) %>%
+  # Renombrar Spain para que la leyenda se vea mejor
+  mutate(
+  full_name = case_when(
+    full_name == "Spain" ~ "España",
+    full_name == "Canarias" ~ "Canarias",
+    geo == "EU27_2020" ~ "Media UE")) %>% 
+  drop_na(values)
+
+
+# --- 2. GENERACIÓN DEL GRÁFICO (FACET WRAP) ---
+p_facet_time_series <- df_facet %>%
+  ggplot(aes(x = year, y = values, color = full_name, group = full_name)) +
+  
+  geom_line(linewidth = 0.5,
+            aes(text = paste("<b>", full_name, "</b>",
+                     "<br>Sector:", sector_name,
+                     "<br>Año:", year,
+                     "<br>Coste/Hora:", round(values, 2), "€"))) +
+  
+  # Dividir el gráfico por sector: scales="free_y" ajusta el eje Y a cada sector
+  facet_wrap(~sector_name, scales = "free_y") + 
+  
+  # Labels
+  labs(
+    title = "Evolución Sectorial del Coste Laboral por Hora: España vs. Canarias",
+    subtitle = paste0("Periodo: ", min(df_facet$year), " - ", max(df_facet$year)),
+    y = "Coste por Hora (€)",
+    x = "Año",
+    color = "Región"
+  ) +
+  
+  # Temas y Estilo
+  scale_color_manual(values = c("Canarias" = "red", "España" = "#1F77B4", "Media UE" = "lightgreen")) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom",
+    panel.grid.major = element_blank(), # Elimina las líneas principales del grid
+    panel.spacing = unit(5, "pt")
+  )
+
+ggplotly(p_facet_time_series, tooltip = "text")
+```
+
+Aquí es donde la realidad se torna severa. Al añadir la línea de la Media UE (verde) a nuestras series temporales, descubrimos una "Doble Velocidad" estructural.
+
+- **Sectores de Convergencia (Bajo Valor):** En sectores como Hostelería (Comercio y alojamiento) o Construcción, las tres líneas viajan relativamente juntas. Canarias (rojo) compite de tú a tú en costes con Europa. Somos competitivos siendo "baratos".
+
+- **Sectores de Divergencia (Alto Valor):** La tragedia aparece en los sectores que definen el futuro. Si nos fijamos en Información y Comunicación, Finanzas o Actividades Profesionales. La línea verde (UE) se dispara hacia arriba con una pendiente agresiva, indicando una alta generación de valor. España (azul) intenta seguirla a distancia. Pero Canarias (rojo) se queda plana o crece muy lentamente. Por tanto En los sectores tecnológicos y profesionales, Canarias no está convergiendo; Europa se está escapando a una velocidad inalcanzable para nuestro modelo actual.
 
 ```{r dubmbell-plot}
 max_year <- max(data$year, na.rm = TRUE)
@@ -1851,7 +1971,7 @@ p_dumbbell <- df_dumbbell %>%
   # Puntos (las 'pesas') - Aquí metemos el tooltip y ajustamos el tamaño
   geom_point(
     # AÑADIDO: Tooltip SÓLO en los puntos
-    aes(text = paste("Región:", full_name, 
+    aes(text = paste("<b>", full_name, "</b>",
                      "<br>Sector:", sector_name,
                      "<br>Coste/Hora:", round(values, 2), "€")), 
     size = 2.5 # AJUSTE: Hacemos los puntos más pequeños (antes 4)
@@ -1874,152 +1994,86 @@ p_dumbbell <- df_dumbbell %>%
 ggplotly(p_dumbbell, tooltip = "text")
 ```
 
-Este gráfico de mancuernas es la prueba pericial más detallada. Cada línea gris representa la distancia salarial en un sector específico entre España (punto azul) y Canarias (punto rojo).  
+Antes de cerrar, hacemos zoom en la fricción interna. Este gráfico de mancuernas mide la distancia salarial exacta entre trabajar en las islas o en la península.
 
-El diagnóstico es severo: Canarias pierde en todo. El punto rojo está sistemáticamente a la izquierda en todos los sectores. Pero el matiz crucial está en la longitud de la línea.  
+Confirmamos la **"penalización insular del talento":** las líneas grises son mucho más largas en los sectores cualificados (*Información y comunicación*, *Industria*, *Finanzas*) que en los básicos (*Agricultura*, *Artes*). Esto explica la fuga de talento nacional: un ingeniero informático canario tiene un incentivo monetario enorme para mudarse a Madrid (la línea gris es muy larga), mientras que para un trabajador del sector primario la diferencia es mínima.
 
-- En sectores de bajo valor como "Agricultura" o "Artes y otros servicios", los puntos están relativamente cerca. Somos igual de "baratos" que el resto.
-
-- Sin embargo, si nos fijamos en los sectores que deberían tirar de la economía: "Información y comunicación" o "Industria", observamos que las líneas grises son larguísimas. Esto revela una "penalización insular del talento": un ingeniero o un informático en Canarias sufre una depreciación salarial mucho mayor que un camarero comparado con sus homólogos peninsulares.
-
-<br>
-Esta imagen congela el estado actual de la brecha, pero no nos dice cómo hemos llegado hasta aquí. ¿Es esta distancia estructural algo estático, o se está ensanchando con el tiempo?
-
-```{r sectores-wrapped-ESIC}
-# --- 1. PREPARACIÓN DE DATOS BASE ---
-df_facet <- data %>%
-  filter(
-    # Filtramos por España y Canarias (NUTS 0 y NUTS 2)
-    (full_name %in% c("Spain") & NUTS == 0) | 
-    (full_name %in% c("Canarias") & NUTS == 2),
-    item == "D1_SAL_HW",
-    unit == "EUR",
-    sector != "TOTAL" # Excluimos el total para ver los sectores individuales
-  ) %>%
-  # Renombrar Spain para que la leyenda se vea mejor
-  mutate(full_name = if_else(full_name == "Spain", "España", full_name)) %>%
-  drop_na(values)
-
-
-# --- 2. GENERACIÓN DEL GRÁFICO (FACET WRAP) ---
-p_facet_time_series <- df_facet %>%
-  ggplot(aes(x = year, y = values, color = full_name, group = full_name)) +
-  
-  geom_line(linewidth = 0.5,
-            aes(text = paste("Región:", full_name,
-                     "<br>Sector:", sector_name,
-                     "<br>Año:", year,
-                     "<br>Coste/Hora:", round(values, 2), "€"))) +
-  
-  # Dividir el gráfico por sector: scales="free_y" ajusta el eje Y a cada sector
-  facet_wrap(~sector_name, scales = "free_y") + 
-  
-  # Labels
-  labs(
-    title = "Evolución Sectorial del Coste Laboral por Hora: España vs. Canarias",
-    subtitle = paste0("Periodo: ", min(df_facet$year), " - ", max(df_facet$year)),
-    y = "Coste por Hora (€)",
-    x = "Año",
-    color = "Región"
-  ) +
-  
-  # Temas y Estilo
-  scale_color_manual(values = c("Canarias" = "red", "España" = "#1F77B4")) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
-    legend.position = "bottom",
-    panel.grid.major = element_blank() # Elimina las líneas principales del grid
-  )
-
-ggplotly(p_facet_time_series, tooltip = "text")
-```
-
-Si desglosamos la evolución temporal sector por sector, confirmamos la tragedia del talento. Fijaos en el gráfico de "Comercio y alojamiento" (Hostelería). Las líneas azul y roja avanzan casi pegadas, entrelazándose; el sector turístico canario es competitivo en costes con el nacional.
-
-Ahora mirad "Profesionales y científicas" o "Información y comunicación". La línea azul (España) despega hacia arriba con fuerza, mientras la roja (Canarias) se queda rezagada, incapaz de seguir el ritmo de crecimiento de valor. No es que Canarias no crezca, es que sus sectores de alto valor están atrofiados y no logran generar la tracción que sí generan en la península.
-
-<br>
-Si nuestros sectores de alto valor pagan mucho peor que en la península, y nuestros sectores de bajo valor pagan "normal" (bajo)... ¿Qué pasa cuando la inmensa mayoría de la población trabaja en los segundos?  
-
-```{r top3sectores-canarias}
+```{r top4sectores-canarias}
 # Filtrado de Canarias y ordenamiento
-tb <- data %>% 
+tb_canarias <- data %>% 
     filter(geo == "ES7", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector != "TOTAL") %>% 
     arrange(values)
 
-top <- tb %>% tail(4)
-bottom <- tb %>% head(4)
+top <- tb_canarias %>% 
+    tail(4) %>% 
+    pull(sector)
 
-# Valor de referencia de España (media nacional)
-valor_referencia <- data %>% 
-    filter(geo == "ES", item == "D1_SAL_HW", unit == "EUR", year == 2023, sector == "TOTAL") %>%
-    pull(values)
+bottom <- tb_canarias %>%
+    head(4) %>% 
+    pull(sector)
 
-# 2. COMBINACIÓN Y CLASIFICACIÓN DE SECTORES
-df_plot <- bind_rows(
-    top %>% mutate(Sector_Type = "Top 3 (Mejor Remunerado)"),
-    bottom %>% mutate(Sector_Type = "Bottom 3 (Peor Remunerado)")
-)
+tb <- data %>% 
+    filter(geo %in% c("ES7", "ES", "EU27_2020"), item == "D1_SAL_HW", unit == "EUR", year == 2023, sector != "TOTAL") %>% 
+      mutate(
+  full_name = case_when(
+    full_name == "Spain" ~ "España",
+    full_name == "Canarias" ~ "Canarias",
+    geo == "EU27_2020" ~ "Media UE")
+      )
+
+
+# # 2. COMBINACIÓN Y CLASIFICACIÓN DE SECTORES
+# df_plot <- bind_rows(
+#     top %>% mutate(Sector_Type = "Top 4 (Mejor Remunerado)"),
+#     bottom %>% mutate(Sector_Type = "Bottom 4 (Peor Remunerado)")
+# )
+colores <- c("Canarias" = "red", "España" = "#1F77B4", "Media UE" = "lightgreen")
+colores_tipo <- c("Top" = "black", "Bottom" = "gray")
+
+df_plot <- tb %>% 
+    filter(sector %in% top | sector %in% bottom) %>% 
+    mutate(Sector_Type = ifelse(sector %in% top, "Top", "Bottom"))
 
 # 3. GENERACIÓN DEL GRÁFICO (Barra horizontal con referencia)
 p_top_bottom <- df_plot %>%
-    ggplot(aes(x = reorder(sector_name, values), y = values, fill = Sector_Type)) +
+    ggplot(aes(x = reorder(sector_name, values), y = values, fill = full_name, color = Sector_Type)) +
     
     # Barras (coord_flip requiere hjust = -0.1 para texto fuera)
     geom_bar(
       stat = "identity", 
-      color = "black",
-      aes(text = paste("Sector:", sector_name, 
+      position = "dodge",
+      aes(text = paste("<b>", full_name, "</b>",
+                       "<br>Sector:", sector_name, 
                        "<br>Coste/Hora:", round(values, 2), "€"))
     ) +
     
-    # Línea de referencia de España
-    geom_hline(yintercept = valor_referencia, color = "red", linetype = "dashed", linewidth = 1) +
-    
-    # Anotación para la línea de España (colocada en el inicio del eje X)
-    annotate("text", 
-             x = 0.5, y = valor_referencia + 2, 
-             label = "Media Nacional", 
-             color = "red", hjust = -0.1, vjust = -1, size = 3.7) +
-    
     # Temas y Labels
-    scale_fill_manual(values = c("Top 3 (Mejor Remunerado)" = "#1F77B4", "Bottom 3 (Peor Remunerado)" = "#FF7F0E")) +
+    scale_color_manual(values = colores_tipo) +
+    scale_fill_manual(values = colores) +
     labs(title = paste("Contraste Salarial Sectorial en Canarias (", 2023, ")"),
          subtitle = "Comparación Top 3 y Bottom 3 vs. Media Nacional de Coste por Hora",
          y = "Coste Laboral por Hora (€)",
          x = "",
-         fill = "Remuneración del sector") +
-    theme(legend.position = "bottom", axis.text.x = element_text(angle = 45, hjust = 1))
+         fill = "Región",
+         color = "Top / Bottom en Canarias") +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1),
+          panel.grid.major.x = element_blank())
 
 ggplotly(p_top_bottom, tooltip = "text")
-
-
-    
 ```
 
-Esta última imagen resume el destino económico de las islas y nos deja un titular preocupante: en Canarias, tener una profesión "intelectual" no garantiza un sueldo digno.
+Cerramos el estudio con esta "foto fija" del valor en 2023. Comparamos los 4 sectores peor pagados (contorno gris) y 4 mejor pagados (contorno negro) de Canarias (rojo); contra España (azul) y Europa (verde).
 
-A la derecha (barras azules), vemos los Top 4 sectores que logran superar la media nacional (línea roja): Finanzas, la Administración Pública (tanto en Educación como en Salud) e Información y Comunicación. Estos actúan como "islas de riqueza", pero dependen en gran medida del empleo público o de nichos muy específicos.  
+Al analizar la altura de las barras, el patrón que emerge es revelador. En los sectores vinculados a la *Administración Pública, Educación y Salud*, observamos una convergencia sorprendente: la barra roja de Canarias roza la altura de la media europea (barra verde), actuando el Estado como un escudo que iguala los salarios.  
 
-La verdadera tragedia se revela en el bloque de la izquierda (Bottom 4). Junto a sectores tradicionalmente precarios como la Agricultura o el Arte, encontramos a las Inmobiliarias y, lo más alarmante, a las Actividades Profesionales y Científicas. Este es el dato que rompe el esquema: un sector que en el resto de Europa es motor de clase media-alta, en Canarias ha caído al vagón de cola, con salarios que apenas compiten con el sector primario. Esto confirma que la economía canaria no solo paga mal en sectores precarios nacionalmente; deprecia sistemáticamente el valor del conocimiento técnico, empujando al talento local a emigrar o a aceptar condiciones muy por debajo de su cualificación.  
+Sin embargo, el abismo se abre drásticamente en los sectores privados impulsados por el talento, independientemente de si están en el grupo de menor remuneración o mayor. El contraste más doloroso lo encontramos en *Actividades Profesionales y Científicas* e *Información y Comunicación*. En ambos casos, la barra verde de la UE se dispara muy por encima de la canaria. Esto confirma que allí donde el salario depende de la competitividad tecnológica y el mercado global, Canarias sufre su mayor desconexión con Europa, mientras que el empleo público maquilla las estadísticas generales.  
 
-La conclusión del proyecto es visualmente ineludible: Canarias tiene una economía polarizada donde la "clase media" sectorial ha desaparecido. Tenemos unos pocos sectores de élite desconectados y una inmensa base de servicios de bajo valor que ancla el promedio hacia el fondo.  
+Lo más impactante es la degradación del valor del conocimiento: un sector clave como *Profesionales y científicas*, que en Europa supera holgadamente los 30€/hora, en Canarias aparece hundido en el grupo de los peor pagados, con una barra roja (~19€) que apenas se despega de los servicios básicos. La brecha aquí es devastadora: el mercado local está pagando el talento técnico casi a la mitad de su precio europeo.  
 
 ## Modelado
 <!-- desarrollo de esta fase -->
+Tras la exploración visual de los datos, en esta fase aplicamos técnicas matemáticas para cuantificar las relaciones observadas y proyectar tendencias futuras. El objetivo no es solo describir qué ocurre, sino validar matemáticamente por qué ocurre y qué ocurrirá si el modelo actual persiste.
 
-```{r matriz-dispersion}
-data %>% 
-  filter(item=="D1_SAL_HW", unit=="EUR", substr(geo, 1, 2) == "ES" & NUTS == 2) %>%  
-  group_by(full_name, sector_name) %>%
-  summarise(values=mean(values)) %>%
-  ungroup() %>%
-  pivot_wider(names_from = sector_name, values_from = values) %>%
-  na.omit() %>% 
-  select(-full_name) %>% 
-  cor(use = "complete.obs") %>% 
-  plot_correlation(show_values = TRUE) 
-```
 ```{r regresion-lineal}
 # --- 1. PREPARACIÓN Y PIVOTADO DE DATOS ---
 
@@ -2079,232 +2133,342 @@ p_dispersion_estatica <- tb_comparacion_estatica %>%
 ggplotly(p_dispersion_estatica, tooltip = "text")
 ```
 
+Para confirmar la "Paradoja de la Eficiencia" detectada en el Acto I, hemos aplicado un modelo de Regresión Lineal Simple sobre el conjunto de datos de países europeos (1995-2023).  
 
+- Variable Independiente ($X$): Horas Trabajadas por Empleado.  
+- Variable Dependiente ($Y$): Coste Laboral por Hora.  
 
+El modelo arroja una recta de regresión con **pendiente negativa** clara (línea negra). El coeficiente de correlación (negativo) confirma estadísticamente que existe una relación inversa: a medida que aumentan las horas trabajadas en una economía, el coste por hora tiende a disminuir.Matemáticamente, esto refuta la hipótesis de que la baja remuneración en España o Canarias se deba a una falta de intensidad laboral. Los datos se ajustan a un modelo donde la "fuerza bruta" (más horas) penaliza el valor unitario.  
+<br>
+<hr>
+<br>
+Una vez descartadas las horas como factor de riqueza, utilizamos técnicas multivariantes para identificar qué sectores actúan como "motores" y cuáles como "lastres" en la economía de las Comunidades Autónomas.
 
+```{r matriz-dispersion}
+data %>% 
+  filter(item=="D1_SAL_HW", unit=="EUR", substr(geo, 1, 2) == "ES" & NUTS == 2) %>%  
+  group_by(full_name, sector_name) %>%
+  summarise(values=mean(values)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = sector_name, values_from = values) %>%
+  na.omit() %>% 
+  select(-full_name) %>% 
+  cor(use = "complete.obs") %>% 
+  plot_correlation(show_values = TRUE) 
+```
 
+Hemos calculado la matriz de correlación utilizando los datos desagregados por Comunidades Autónomas. El objetivo es medir la fuerza de la relación lineal entre el peso de cada sector y la variable objetivo: Total Actividades (Coste medio total).  
 
-En esta parte del análisis, nos centramos en estudiar la evolución temporal de las horas trabajadas en España y su remuneración por hora, para posteriormente aplicar modelos de predicción ARIMA que permitan estimar su posible comportamiento en los próximos años.  
+Los resultados dividen la economía en dos bloques matemáticos:  
 
-### Análisis de las horas trabajadas
-Comenzamos observando la evolución de las horas trabajadas en España durante el periodo disponible. Destaca la caída registrada en 2020, resultado del impacto de la pandemia y de la reducción de las horas efectivas trabajadas por los ERTE y las restricciones laborales.
-```{r evolucion-horas-españa-data, results=F}
-horas.españa <- data %>% 
-    filter(geo == "ES", item=="HW_EMP", unit=="HW") %>% 
+- Correlaciones Positivas (Cercanas a 1 - Motores de Riqueza): Observamos correlaciones fuertes y positivas en sectores como "Información y comunicación" y "Actividades Profesionales". Matemáticamente, esto significa que cuanto mayor es el peso de estos sectores en una región, mayor es su sueldo medio total.
+
+- Correlaciones Débiles o Negativas (Cercanas a 0 - Lastres): Sectores como "Agricultura" o "Manufactura" muestran correlaciones bajas o incluso negativas con el coste total. Esto implica que una especialización excesiva en estas áreas no contribuye estadísticamente a elevar la media salarial de la región.
+<br>
+<hr>
+<br>
+Para visualizar cómo se agrupan las regiones según su "ADN económico", aplicamos un Análisis de Componentes Principales (PCA). Este algoritmo reduce la complejidad de todos los sectores a menos dimensiones, permitiéndonos ver qué regiones se parecen entre sí.
+
+```{r visualizacion-pca}
+tb <- data %>%
+      filter(item=="D1_SAL_HW", unit=="EUR", substr(geo, 1, 2) == "ES" & NUTS == 2)%>% 
+      group_by(Región = full_name, sector_name) %>%
+      summarise(values=mean(values)) %>%
+      ungroup() %>%
+      pivot_wider(names_from = sector_name, values_from = values) %>%
+      na.omit()
+
+pca_ccaa <- tb %>%
+        column_to_rownames(var="Región") %>% 
+        prcomp(scale = TRUE)
+
+hchart(pca_ccaa, choices = c(1, 2))
+```
+
+El gráfico resultante es un mapa de la "Doble España":
+
+- **Los Vectores de la Modernidad:** Fíjense en las líneas (vectores) que apuntan hacia la derecha: corresponden a Finanzas, Información y comunicación y Profesionales y científicas. Estos son los sectores que "tiran" de la economía hacia el cuadrante positivo.
+
+- **El Clúster Rico:** Madrid, Navarra y País Vasco aparecen aisladas en el extremo derecho, alineadas perfectamente con la dirección de esos vectores de alto valor. Su posición no es casualidad; es la consecuencia matemática de su estructura.
+
+- **El Clúster de la Dependencia:** En el lado opuesto (izquierda), encontramos agrupadas a regiones como Extremadura, Castilla-La Mancha o Andalucía. Estas regiones están "lejos" de la influencia de los vectores tecnológicos, quedando relegadas estructuralmente en el mapa de la eficiencia.
+<br>
+<hr>
+<br>
+Finalmente, para responder a la pregunta de si la brecha es coyuntural o estructural, hemos usado un modelo ARIMA sobre las series temporales de coste laboral por hora, para España y para Canarias.
+
+```{r funcion-doble-arima}
+plot_forecast_dual <- function(serie1, serie2,
+                               pred1, pred2,
+                               time_var, value_var,
+                               titulo = "Proyección") {
+  
+  # Convertir nombres de columnas a símbolos
+  time_sym  <- rlang::sym(time_var)
+  value_sym <- rlang::sym(value_var)
+  
+  # --------------------------
+  # 1) Preparar series originales
+  # --------------------------
+  serie1_df <- serie1 %>%
+    as_tibble() %>%
+    mutate(serie = "Canarias")
+  
+  serie2_df <- serie2 %>%
+    as_tibble() %>%
+    mutate(serie = "España")
+  
+  # --------------------------
+  # 2) Función: procesar predicción (intervalos + media)
+  # --------------------------
+  prep_pred <- function(pred_df, label) {
+    pred_df %>%
+      hilo(level = 95) %>%
+      unpack_hilo(`95%`) %>%
+      as_tibble() %>%
+      rename(lower = `95%_lower`, upper = `95%_upper`) %>%
+      mutate(serie = label)
+  }
+  
+  pred1_df <- prep_pred(pred1, "Canarias")
+  pred2_df <- prep_pred(pred2, "España")
+  
+  # --------------------------
+  # 3) Función: añadir fila ancla
+  # --------------------------
+  add_anchor <- function(history, pred, time_sym, value_sym) {
+    
+    # último dato real
+    last_real <- tail(history, 1)
+    
+    # copiar estructura de pred[1,]
+    anchor <- pred[1, ]
+    
+    # sustituir valores
+    anchor[[rlang::as_string(time_sym)]]  <- last_real[[rlang::as_string(time_sym)]]
+    anchor$.mean  <- last_real[[rlang::as_string(value_sym)]]
+    anchor$lower  <- last_real[[rlang::as_string(value_sym)]]
+    anchor$upper  <- last_real[[rlang::as_string(value_sym)]]
+    
+    # devolver predicción con fila ancla arriba
+    dplyr::bind_rows(anchor, pred)
+  }
+  
+  # aplicar ancla a cada serie
+  pred1_df <- add_anchor(serie1_df, pred1_df, time_sym, value_sym)
+  pred2_df <- add_anchor(serie2_df, pred2_df, time_sym, value_sym)
+  
+  # combinar predicciones
+  preds_df <- bind_rows(pred1_df, pred2_df)
+  
+  # combinar historias
+  history_df <- bind_rows(serie1_df, serie2_df)
+  
+  # --------------------------
+  # 4) Gráfico
+  # --------------------------
+  p <- ggplot() +
+    geom_ribbon(
+      data = preds_df,
+      aes(x = !!time_sym, ymin = lower, ymax = upper, fill = serie),
+      alpha = 0.2
+    ) +
+    geom_line(
+      data = history_df,
+      aes(x = !!time_sym, y = !!value_sym, color = serie),
+      linewidth = 1
+    ) +
+    geom_line(
+      data = preds_df,
+      aes(x = !!time_sym, y = .mean, color = serie),
+      linewidth = 1, linetype = "dashed"
+    ) +
+    scale_color_manual(values = c("Canarias"="red", "España"="#1F77B4")) +
+    scale_fill_manual(values = c("Canarias"="red", "España"="#1F77B4")) +
+    labs(
+      title = titulo,
+      subtitle = "Predicción con intervalos de confianza del 95%",
+      x = time_var, y = value_var,
+      color = "Serie", fill = "Serie"
+    ) +
+    theme_minimal(base_size = 13)
+  
+  ggplotly(p, tooltip = c(time_var, value_var, "serie"))
+}
+
+```
+```{r doble-arima}
+# CANARIAS
+remun.canarias <- data %>% 
+    filter(geo == "ES7", item=="D1_SAL_HW", unit=="EUR", sector=="TOTAL") %>% 
     select(year, values) %>% 
     as_tsibble(index = year) %>% 
+    rename(Año = year, Valor = values) %>% 
     fill_gaps()
 
-horas.españa
-```
-```{r evolucion-horas-españa}
-horas.españa %>% 
-    autoplot() +
-    labs(title = "Evolución de las horas trabajadas anualmente en España", x="Año", y="Horas")
-```
+remun.canarias.arima <- remun.canarias %>% 
+    model(ARIMA(Valor))
 
-Para ajustar el modelo ARIMA de horas trabajadas, omitimos el año 2020, ya que la anomalía causada por la pandemia distorsionaría los parámetros del modelo.
-```{r evolucion-horas-españa-covid-data, results=FALSE}
-horas.españa.omit.covid <- horas.españa %>% 
-    filter(year!=2020) %>%
-    fill_gaps()
-
-
-horas.españa.omit.covid
-```
-
-A continuación, comparamos la evolución de España y Canarias, donde se aprecia que las horas trabajadas en Canarias son superiores a la media nacional, reflejando la particularidad de su mercado laboral y la mayor presencia de sectores con jornadas más largas.
-```{r evolucion-horas-españa-canarias}
-comparacion.ES_IC.horas <- data %>% 
-    filter(geo %in% c("ES", "ES7"), item=="HW_EMP", unit=="HW") %>% 
-    select(year, geo, values) %>% 
-    mutate(geo = ifelse(geo == "ES7", "Canarias", "España"),
-             # Para que salga España primero como en el de abajo y mantener coherencia 
-           geo = factor(geo, levels = c("España", "Canarias"))) %>% 
-    as_tsibble(index = year, key = geo) %>% 
-    fill_gaps()
-
-
-# CAMBIAR EL ORDEN EN EL QUE SE MUESTRA, PRIMERO ES COMO EN EL DE ABAJO
-comparacion.ES_IC.horas %>% rename(Región = geo) %>% 
-    autoplot() +
-    labs(title = "Horas anuales - ES vs IC", x="Año",y="Horas") +
-    scale_color_manual(values = c("Canarias" = "steelblue", "España" = "red"))
-```
-
-España mantiene horas trabajadas superiores a la media europea, situándose en un nivel más alto en comparación con otros países de la UE.
-```{r evolucion-horas-españa-europa}
-comparacion.ES_UE.horas <- data %>% 
-    filter(geo %in% c("ES", "EU27_2020"), item=="HW_EMP", unit=="HW") %>% 
-    select(year, geo, values) %>% 
-    mutate(geo = ifelse(geo == "EU27_2020", "Unión Europea", "España")) %>% 
-    as_tsibble(index = year, key = geo) %>% 
-    fill_gaps()
-
-comparacion.ES_UE.horas %>% rename(Región = geo) %>% 
-    autoplot() +
-    labs(title = "Horas anuales - ES vs UE", x = "Año", y = "Horas") +
-    scale_color_manual(values = c("Unión Europea" = "green", "España" = "red"))
-```
-
-Con el modelo ARIMA aplicado a las horas trabajadas, se estima la evolución para los próximos cinco años. El modelo se ha ajustado omitiendo 2020, dado el impacto anómalo de la pandemia, y proyecta una ligera continuidad en la tendencia a la baja, aunque con cierta variabilidad en los valores futuros.
-```{r evolucion-horas-españa-arima, results = F}
-horas.españa.omit.covid.arima <- horas.españa.omit.covid %>% 
-    model(ARIMA(values))
-```
-```{r descomposicion-horas-españa}
-horas.españa.STL <- horas.españa %>% 
-    model(STL(values,robust = TRUE)) %>% 
-    components()
-
-p <- horas.españa.STL %>% 
-    autoplot() +
-    labs(x="Año")
-
-ggplotly(p)
-```
-
-```{r evolucion-horas-españa-prediccion}
-horas.españa.omit.covid.prediccion <- horas.españa.omit.covid.arima %>%
+remun.canarias.prediccion <- remun.canarias.arima %>%
      forecast(h="5 years")
 
-GraficoDinamicoArima95CI(horas.españa, "year", "values", horas.españa.omit.covid.prediccion, "Título")
-```
-
-```{r real-vs-arima-horas}
-# Generamos el data frame con los valores reales y ajustados del modelo
-ajuste_horas <- horas.españa.omit.covid.arima %>% 
-  augment()  # añade columnas .fitted y .resid
-
-# Gráfico de comparación entre los valores reales y el ajuste del modelo ARIMA
-ajuste_horas %>%
-  ggplot(aes(x = year)) +
-  geom_line(aes(y = values, colour = "Real")) +
-  geom_line(aes(y = .fitted, colour = "Ajuste ARIMA"), linetype = "dashed") +
-  labs(
-    title = "Calidad ajuste del modelo ARIMA - Horas anuales ES",
-    x = "Año", y = "Horas"
-  ) +
-  scale_colour_manual(values = c("Real" = "black", "Ajuste ARIMA" = "red")) +
-  theme(legend.title = element_blank())
-```
-
-
-### Análisis de la remuneración por hora
-Pasamos después al análisis de la remuneración por hora trabajada, que muestra una trayectoria más estable y creciente en el tiempo, reflejando una recuperación progresiva tras la crisis sanitaria.
-```{verbatim evolucion-remun-españa-data, results = F}
+# ESPAÑA
 remun.españa <- data %>% 
     filter(geo == "ES", item=="D1_SAL_HW", unit=="EUR", sector=="TOTAL") %>% 
     select(year, values) %>% 
     as_tsibble(index = year) %>% 
+    rename(Año = year, Valor = values) %>% 
     fill_gaps()
 
-remun.españa
-```
-```{verbatim evolucion-remun-españa}
-remun.españa %>% 
-    autoplot() +
-    labs(title = "Evolución del coste laboral por hora trabajada en España", x="Año", y="EUR / Hora")
-```
-
-En la comparación entre España y Canarias, se observan diferencias consistentes: las islas mantienen remuneraciones inferiores a la media nacional, influenciadas por su estructura productiva y los sectores predominantes.
-```{verbatim evolucion-remun-españa-canarias}
-comparacion.ES_IC.remun <- data %>% 
-    filter(geo %in% c("ES", "ES7"), item=="D1_SAL_HW", unit=="EUR", sector=="TOTAL") %>% 
-    select(year, geo, values) %>% 
-    mutate(geo = ifelse(geo == "ES7", "Canarias", "España"),
-             # Para que salga España primero como en el de abajo y mantener coherencia 
-           geo = factor(geo, levels = c("España", "Canarias"))) %>% 
-    as_tsibble(index = year, key = geo) %>% 
-    fill_gaps()
-
-
-# CAMBIAR EL ORDEN EN EL QUE SE MUESTRA, PRIMERO ES COMO EN EL DE ABAJO
-comparacion.ES_IC.remun %>% rename(Región = geo) %>% 
-    autoplot() +
-    labs(title = "Coste laboral por hora trabajada - ES vs IC", x="Año",y="EUR / Hora") +
-    scale_color_manual(values = c("Canarias" = "steelblue", "España" = "red"))
-```
-
-En el contexto europeo, la remuneración media por hora en España es ligeramente inferior a la media de la UE, reflejando diferencias en productividad y estructura económica.
-```{verbatim evolucion-remun-españa-europa}
-comparacion.ES_UE.remun <- data %>% 
-    filter(geo %in% c("ES", "EU27_2020"), item=="D1_SAL_HW", unit=="EUR", sector=="TOTAL") %>% 
-    select(year, geo, values) %>% 
-    mutate(geo = ifelse(geo == "EU27_2020", "Unión Europea", "España")) %>% 
-    as_tsibble(index = year, key = geo) %>% 
-    fill_gaps()
-
-comparacion.ES_UE.remun %>% rename(Región = geo) %>% 
-    autoplot() +
-    labs(title = "Coste laboral por hora trabajada - ES vs IC", x = "Año", y = "EUR / Hora") +
-    scale_color_manual(values = c("Unión Europea" = "green", "España" = "red"))
-```
-
-Finalmente, el modelo ARIMA aplicado a la remuneración muestra un ajuste más preciso que el de las horas trabajadas y proyecta un aumento moderado y constante en los próximos años, consolidando la tendencia positiva observada en el periodo reciente.
-```{verbatim evolucion-remun-españa-arima, results = F}
 remun.españa.arima <- remun.españa %>% 
-    model(ARIMA(values))
-```
-```{verbatim descomposicion-remun-españa}
-remun.españa.STL <- remun.españa %>% 
-    model(STL(values,robust = TRUE)) %>% 
-    components()
+    model(ARIMA(Valor))
 
-remun.españa.STL %>% 
-    autoplot() +
-    labs(x="Año")
-```
-
-```{verbatim evolucion-remun-españa-prediccion}
 remun.españa.prediccion <- remun.españa.arima %>%
      forecast(h="5 years")
 
-remun.españa.prediccion %>% 
-    autoplot(remun.españa) +
-    labs(title = "Coste laboral por hora trabajada en ES - Predicción futura", x = "Año", y = "EUR / Hora")
+# GRÁFICO DE LOS 2 ARIMAS
+plot_forecast_dual(remun.canarias, remun.españa, remun.canarias.prediccion, remun.españa.prediccion, "Año", "Valor", "Predicción de la remuneración por hora trabajada (España vs Canarias)")
 ```
 
-```{verbatim real-vs-arima-remun, fig.width=8}
-# Generamos el data frame con los valores reales y ajustados del modelo
-ajuste_horas <- remun.españa.arima %>% 
-  augment()  # añade columnas .fitted y .resid
+El modelo proyecta el comportamiento para los próximos 5 años con intervalos de confianza del 95%.
 
-# Gráfico de comparación entre los valores reales y el ajuste del modelo ARIMA
-ajuste_horas %>%
-  ggplot(aes(x = year)) +
-  geom_line(aes(y = values, colour = "Real")) +
-  geom_line(aes(y = .fitted, colour = "Ajuste ARIMA"), linetype = "dashed") +
-  labs(
-    title = "Calidad ajuste del modelo ARIMA - Coste laboral hora trabajada ES",
-    x = "Año", y = "EUR / Hora"
-  ) +
-  scale_colour_manual(values = c("Real" = "black", "Ajuste ARIMA" = "red")) +
-  theme(legend.title = element_blank())
-```
+- **La Tendencia de España (Azul)**: Muestra una pendiente de crecimiento sostenida, impulsada por la tracción de sus zonas industriales y de servicios avanzados.
+- **La Tendencia de Canarias (Rojo)**: Muestra un crecimiento mucho más moderado.
+
+Lo más alarmante es la divergencia de las áreas sombreadas (intervalos de confianza). Las proyecciones no se tocan; se separan. El modelo matemático predice que, si la estructura sectorial no cambia, la brecha salarial no se cerrará por inercia, sino que tenderá a cronificarse o ensancharse. Canarias no está convergiendo hacia la media nacional; estadísticamente, se está desacoplando.
 
 ## Evaluación
-
 <!-- desarrollo de esta fase -->
+
+Para garantizar que las conclusiones extraídas del apartado de modelado son robustas y no fruto del azar, hemos sometido a los modelos predictivos a una evaluación de desempeño mediante la métrica RMSE (*Root Mean Square Error*). Esta métrica cuantifica el error promedio de la predicción expresado en las mismas unidades que la variable objetivo (Euros por hora).  
+
+Los resultados obtenidos validan una alta fiabilidad en las proyecciones:  
+
+- **Serie España:** El algoritmo seleccionó un modelo <ARIMA(1,1,0) w/ drift>. El RMSE obtenido es de 0.35, lo que indica que el error promedio del modelo es de apenas 35 céntimos de euro sobre el coste real.  
+
+- **Serie Canarias:** Se ajustó un modelo <ARIMA(0,1,1) w/ drift>. El RMSE es de 0.42, implicando un margen de error de 42 céntimos.  
+
+Considerando que los costes laborales oscilan entre los 20€ y 30€, errores inferiores a 0.50€ representan una desviación mínima. La presencia del componente drift (tendencia) en ambos modelos, junto con estos bajos niveles de error, confirma estadísticamente que la divergencia futura observada en las gráficas no es ruido estadístico, sino una tendencia estructural sólida y predecible. Podemos confiar en que, sin cambios externos, la brecha salarial seguirá el camino trazado.
+
 
 ## Despliegue
-
 <!-- desarrollo de esta fase -->
+
+El valor de un proyecto de Ciencia de Datos no reside solo en las conclusiones estáticas de una memoria, sino en la capacidad de entregar herramientas que permitan a otros usuarios explorar, verificar y descubrir nuevos patrones. Por ello, el producto final de este trabajo es un Cuadro de Mandos Interactivo (Dashboard) desarrollado con `flexdashboard` y `Shiny`.
+
+Esta herramienta no es una simple galería de imágenes; es una aplicación web reactiva que permite al usuario navegar por todo el ciclo de vida del dato, desde la exploración visual hasta la predicción algorítmica.
+
+A continuación, se detallan los módulos funcionales que componen el aplicativo:
+
+### Módulos Funcionales
+
+#### Exploración Temporal (Pestaña "Series Temporales")
+Este módulo permite analizar la evolución histórica de cualquier indicador disponible en el dataset.  
+
+- **Funcionalidad:** El usuario puede seleccionar indicadores (ej. Coste Laboral), unidades y regiones específicas.  
+
+- **Visualización Flexible:** Ofrece dos modos de visualización:  
+
+    - **Facetado (Separados):** Para ver la tendencia limpia de cada país individualmente.  
+    - **Superpuesto:** Para comparar directamente las curvas de crecimiento entre regiones (ej. Canarias vs. Media UE) en un mismo eje.
+
+#### Análisis Geoespacial (Pestaña "Mapa Coroplético")
+Diseñado para identificar patrones territoriales y desigualdades geográficas.  
+
+- **Visión Macro y Micro:** Permite visualizar el mapa completo de Europa (NUTS 0) para cualquier año e indicador.
+
+- **Drill-down Regional:** Incorpora una funcionalidad avanzada de "profundidad". Al seleccionar un país concreto en el filtro, el mapa se redibuja automáticamente para mostrar la granularidad interna de ese país (regiones NUTS 1/2). Esto es fundamental para observar las diferencias internas, como la brecha Norte-Sur en España o Italia.
+
+#### Laboratorio de Relaciones (Pestaña "Comparación de Atributos")
+Este módulo permite al usuario actuar como analista, cruzando libremente cualquier variable del dataset (Eje X vs. Eje Y) para detectar correlaciones.  
+
+- **Transformaciones Estadísticas:** Dado que los datos económicos suelen presentar asimetrías, el dashboard permite aplicar transformaciones matemáticas en tiempo real sobre los ejes, incluyendo escalas logarítmicas y la transformación de Yeo-Johnson, esencial para normalizar distribuciones complejas.  
+
+- **Correlación Sectorial:** Permite cambiar el foco de "Regiones" a "Sectores", visualizando cómo interactúan las distintas ramas de actividad económica entre sí.
+
+#### Motor de Predicción (Pestaña "Predicción ARIMA")
+Integra los modelos de Machine Learning desarrollados en el proyecto para proyectar el futuro.  
+
+- **Forecasting a la Carta:** El usuario puede seleccionar cualquier región y métrica para generar una predicción a 5 o menos años vista.  
+
+- **Transparencia del Modelo:** El dashboard no es una "caja negra"; muestra dinámicamente el ajuste del modelo (línea roja discontinua vs. real), calcula el error RMSE en tiempo real y especifica qué hiperparámetros ARIMA $(p,d,q)$ han sido seleccionados automáticamente por el algoritmo.  
+
+- **Ventana Deslizante:** Permite ajustar el año de inicio de los datos de entrenamiento para verificar cómo se comportaría el modelo en distintos periodos históricos.
+
+#### Estructura Latente (Pestaña "Análisis de Atributos")
+Dedicada al análisis multivariante para entender la composición sectorial.
+
+- **Granularidad:** Permite alternar el análisis entre Países Europeos y Comunidades Autónomas.  
+
+- **Herramientas Avanzadas:** Incluye visualizaciones de la Matriz de Correlación (Heatmap), varianza explicada y la proyección de los Componentes Principales (PCA), permitiendo identificar visualmente los clústeres de regiones ricas vs. regiones dependientes.
+
+### Experiencia de Usuario y Reactividad
+El desarrollo se ha regido por principios de usabilidad y robustez técnica:
+
+- **Lógica Condicional (Reactive Logic):** El cuadro de mandos es "inteligente". Los selectores están encadenados lógicamente para evitar errores; por ejemplo, si el usuario selecciona el indicador "Horas Trabajadas", el selector de unidades ocultará automáticamente la opción "Euros", mostrando solo las unidades temporales válidas. Esto asegura la coherencia de los análisis generados.  
+
+- **Interactividad Total:** Todos los gráficos (generados con plotly y highcharter) son interactivos, permitiendo hacer zoom, paneo y consultar valores exactos mediante tooltips al pasar el ratón, facilitando la exploración de datos densos.  
+
+Este despliegue garantiza que las conclusiones del estudio sean reproducibles, auditables y extensibles por cualquier interesado en la economía regional europea.
+
+### Publicación Web Estática (GitHub Pages)
+
+Adicionalmente, se ha configurado el repositorio para desplegar la versión compilada de la memoria (HTML) a través de *GitHub Pages*. Esto actúa como un release estable del documento narrativo. A diferencia del dashboard, que requiere un servidor de cálculo activo (R), esta versión estática permite que **cualquier usuario con el enlace** pueda acceder a la lectura completa del informe, los análisis y las gráficas interactivas desde cualquier dispositivo móvil o de escritorio, garantizando la pervivencia y universalidad de los resultados del proyecto.
 
 # Conclusiones y trabajo futuro
 
 
-## Conclusiones
 
+## Conclusiones
 <!-- Revisión clara y concisa de los hallazgos más relevantes del estudio, vinculados directamente con los objetivos o hipótesis planteados. Reconocimiento honesto de los puntos débiles o restricciones (por ejemplo, tamaño de muestra reducido, falta de datos, sesgos.  Evitar aquí generalidades de ChatGPT --> 
 
-## Trabajo futuro
+Este estudio se planteó con el objetivo principal de determinar si la baja remuneración en Canarias y España obedecía a factores de intensidad laboral o a causas estructurales. Tras completar el ciclo de análisis de datos (ETL, Visualización y Modelado), se exponen los siguientes hallazgos vinculados a las hipótesis iniciales:  
 
+#### Refutación de la Hipótesis del Esfuerzo (La Paradoja de la Eficiencia):  
+
+Los datos son concluyentes al descartar la falta de intensidad laboral como causa de la pobreza relativa.  
+
+- A nivel europeo, se ha demostrado una correlación inversa entre horas trabajadas y coste laboral (pendiente negativa con una alta correlación en la regresión lineal).  
+
+- Específicamente en el caso de Canarias, la serie temporal (2000-2023) evidencia que la región mantiene un promedio de horas anuales por empleado sistemáticamente superior a la media de la UE. Por tanto, la brecha salarial no se justifica por un menor presencialismo.  
+
+#### El Determinante Sectorial y la "Penalización del Talento": 
+
+Se confirma que la estructura productiva es el factor causal de la desigualdad regional.
+
+- El análisis de correlación y PCA agrupa matemáticamente a las regiones ricas (Madrid, País Vasco) con los vectores de Finanzas y TIC, y a las regiones rezagadas con Hostelería y Agricultura.  
+
+- El hallazgo más crítico es la identificación de una "penalización insular del talento". La brecha salarial Canarias-Europa es mucho más profunda en sectores de alto valor añadido (Profesionales y Científicas, Información) que en sectores de servicios básicos. Esto indica que el modelo económico actual de las islas devalúa la cualificación técnica, incentivando la fuga de cerebros.  
+
+#### Divergencia Económica (Desacople):
+
+Contrario a las teorías de convergencia, los modelos predictivos (ARIMA) y el análisis de la brecha histórica muestran un desacople estructural. Tras las crisis de 2008 y 2020, la distancia entre los salarios canarios y la media nacional no se está cerrando, sino que se cronifica.
+
+### Limitaciones del Estudio  
+
+Para una correcta interpretación de estos resultados, es necesario reconocer las restricciones inherentes a los datos y la metodología empleada:  
+
+- **Naturaleza del Indicador (Coste vs. Salario):** El estudio utiliza el Coste Laboral Total (que incluye cotizaciones sociales e impuestos a cargo del empleador) como proxy de riqueza. No se ha analizado el Salario Neto, por lo que las diferencias en la presión fiscal entre países podrían matizar la brecha de poder adquisitivo real de los trabajadores.  
+
+- **Falta de Granularidad en Horas:** Eurostat no ofrece datos abiertos de Horas Trabajadas desglosados por sector específico para todas las regiones NUTS 2. Esto ha impedido calcular la eficiencia exacta (euros/hora) dentro de cada sector específico en Canarias, obligando a trabajar con promedios agregados regionales.  
+
+- **Efecto de la Economía Sumergida:** Al basarse exclusivamente en fuentes oficiales (INE, Eurostat), el análisis no captura el impacto de la economía informal, que podría tener un peso desigual entre las distintas comunidades autónomas analizadas.  
+
+## Trabajo futuro
 <!-- Líneas de trabajo futuro, aspectos pendientes, posibles extensiones. --> 
+
+Aunque este proyecto ha logrado diagnosticar con éxito las causas estructurales de la brecha salarial, el proceso de análisis ha revelado nuevas preguntas y limitaciones en los datos públicos que abren líneas interesantes para futuras investigaciones:
+
+- **Del Coste Empleador al Bolsillo del Empleado:** Los indicadores utilizados en esta memoria reflejan el Coste Laboral (lo que paga la empresa, incluyendo cotizaciones e impuestos), no el salario neto que percibe el trabajador. Dado que la fiscalidad (la "cuña fiscal") varía enormemente entre países europeos, una extensión natural de este trabajo sería cruzar los datos de coste con la estructura impositiva de cada país. Esto permitiría analizar la brecha en términos de poder adquisitivo real, verificando si la diferencia de riqueza percibida por las familias es aún mayor que la sugerida por los costes empresariales.  
+
+- **Perspectiva de Género:** La estructura sectorial tiene un fuerte impacto en la brecha de género, dado que existen sectores muy masculinizados (Industria) y feminizados (Cuidados/Servicios). Una evolución necesaria de este estudio sería desagregar los datos por sexo para determinar si la "trampa de bajo valor" en regiones como Canarias penaliza doblemente a las mujeres, o si la precariedad es transversal.  
+
+- **Mayor Granularidad Sectorial:** La mayor limitación técnica encontrada ha sido la falta de disponibilidad en fuentes públicas (Eurostat) de las variables Horas Trabajadas y Coste por Persona Empleada desagregadas por sector. Actualmente, solo el Coste por Hora ofrece ese nivel de detalle. Un trabajo futuro debería enfocarse en integrar otras fuentes estadísticas (como la Encuesta de Población Activa - EPA - microdatos) para reconstruir estas métricas. Poder calcular las horas exactas que se trabajan en "Hostelería" frente a "Finanzas" permitiría afinar el modelo de eficiencia y entender mejor la carga laboral real de cada profesión.  
 
 
 ## Anexo. Seguimiento temporal actividades del proyecto  {-} 
 
+Para la realización de este proyecto se ha llevado a cabo un registro detallado de la actividad, permitiendo cuantificar el coste temporal real de cada fase del ciclo de vida de los datos. Las siguientes visualizaciones desglosan el **total de horas invertidas**, su distribución semanal y, lo más relevante, la carga de trabajo por etapa (preparación, modelado, despliegue).
 
 <!-- Lo primero que hay que hacer es compartir en modo lectura la hoja de cálculo Google Sheet que habremos descargado del Campus Virtual para registrar las sesiones de trabajo. A continuación se sustituirá, debajo, el enlace que figura en la lectura del archivo (read_sheet) por el enlace compartido que has creado. 
 
