@@ -29,30 +29,45 @@ margin: 40px;
 
 /* === Títulos === */
 h1, h2, h3, h4 {
-font-family: "Times New Roman", serif;
-color: #1a1a1a;
-margin-top: 1.5em;
-margin-bottom: 0.6em;
-line-height: 1.25;
+  font-family: "Times New Roman", serif;
+  color: #1a1a1a;
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  line-height: 1.25;
 }
 
+/* H1: título principal */
 h1 {
-font-size: 1.9em;
-border-bottom: 2px solid #444;
-padding-bottom: 0.2em;
+  font-size: 1.9em;
+  border-bottom: 2px solid #444;
+  padding-bottom: 0.2em;
 }
 
+/* H2: sección */
 h2 {
-font-size: 1.5em;
-color: #2a2a2a;
-border-left: 4px solid #888;
-padding-left: 0.5em;
+  font-size: 1.5em;
+  color: #2a2a2a;
+  border-left: 4px solid #888;
+  padding-left: 0.5em;
 }
 
+/* H3: subsección (derivado del estilo de H2 pero más suave) */
 h3 {
-font-size: 1.25em;
-color: #333;
-font-style: italic;
+  font-size: 1.25em;
+  color: #333;
+  font-style: italic;
+  border-left: 3px solid #aaa;
+  padding-left: 0.5em;
+  border-radius: 3px;
+}
+
+/* H4: apartado pequeño (sutil pero diferenciado) */
+h4 {
+  font-size: 1.1em;
+  color: #444;
+  font-weight: bold;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
 }
 
 /* === Párrafos y texto === */
@@ -101,17 +116,22 @@ font-style: italic;
 }
 
 /* === Código y chunks === */
-pre, code {
-font-family: "Courier New", monospace;
-background-color: #f8f8f8;
-border-radius: 4px;
-padding: 2px 5px;
+code {
+  font-family: "Courier New", monospace;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  padding: 2px 5px;
+  box-shadow: none;
 }
 
 pre {
-padding: 10px;
-overflow-x: auto;
-border: 1px solid #e0e0e0;
+  font-family: "Courier New", monospace;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  padding: 10px;
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.18);
 }
 
 /* === Estilo para las gráficas generadas con ggplot === */
@@ -527,7 +547,7 @@ show_values = TRUE # flat para controlar si se imprimen los valores en las celda
     hovertemplate = "X: %{x}<br>Y: %{y}<br>Correlación: %{z:.4f}<extra></extra>"
   ) %>%
     layout(
-      title = "Matriz de correlación interactiva",
+      title = "Correlación de sectores laborales - CCAA de España",
       xaxis = list(title = "", tickangle = 45),
       yaxis = list(title = "", autorange = "reversed")
     )
@@ -634,6 +654,27 @@ tabla %>% column_spec(2, extra_css = "text-align: center;") %>%
           column_spec(5, extra_css = "text-align: center;")
 ```
 
+A continuación, se justifica la relación identificada en la tabla anterior:
+
+- Impacto Alto: El Núcleo del Estudio (ODS 8 y 10)
+Estos objetivos representan el corazón de la tesis del proyecto:
+
+    - **ODS 8: Trabajo decente y crecimiento económico:** Este es el objetivo con mayor vinculación. El proyecto ataca directamente la problemática de la precariedad salarial y la baja productividad. Al demostrar que el modelo actual se basa en un uso extensivo de horas con bajo retorno, el estudio aboga por una transformación hacia actividades de mayor valor añadido que permitan salarios dignos sin necesidad de aumentar la carga laboral.
+
+    - **ODS 10: Reducción de las desigualdades:** El análisis geográfico y sectorial visibiliza la fractura territorial entre el Norte y el Sur de España, y específicamente el "desacople" de Canarias. Al identificar las causas estructurales (y no individuales) de esta brecha, el trabajo aporta la evidencia necesaria para diseñar políticas públicas que fomenten una convergencia real y reduzcan la desigualdad de ingresos entre regiones.
+
+- Impacto Medio: Consecuencias Directas (ODS 1, 3 y 9)
+Estos objetivos se ven afectados como consecuencia directa de los hallazgos económicos:
+
+    - **ODS 1: Fin de la pobreza:** La persistencia de salarios bajos (analizada en los sectores bottom) es la causa principal de la figura del "trabajador pobre". Entender la estructura salarial es el primer paso para erradicar la pobreza laboral.
+    
+    - **ODS 9: Industria, innovación e infraestructura:** El estudio concluye que la falta de especialización en sectores tecnológicos (TIC, Industria) es lo que lastra los salarios. Por tanto, promueve implícitamente la necesidad de reindustrializar y fomentar la innovación como motor de riqueza.
+
+    - **ODS 3: Salud y bienestar:** Al refutar el mito de la pereza y demostrar que en Canarias se trabajan más horas que en Europa, el proyecto pone de relieve el impacto del presencialismo ineficiente sobre la salud mental y la conciliación familiar de los trabajadores.
+
+- Impacto Bajo/Transversal: Contexto y Transparencia
+El resto de objetivos (ODS 2, 11, 12, 16, 17) presentan una relación indirecta o instrumental. Destaca el ODS 16 (Paz, justicia e instituciones sólidas), al cual contribuye el proyecto mediante el ejercicio de transparencia de datos: al hacer accesible la información pública (Eurostat/INE) a través de un cuadro de mandos abierto, se fomenta una ciudadanía informada y se fortalecen las instituciones mediante la auditoría pública de la realidad económica.
+
 # Desarrollo
 
 
@@ -726,6 +767,9 @@ Tras la preselección de un primer candidato y su posterior descarte por no ajus
 
 ## Comprensión de los datos
 <!-- desarrollo de esta fase -->
+Este capítulo constituye la auditoría técnica del proyecto. A diferencia del resto de apartados, centrados en la narrativa visual y el análisis económico, esta sección se ciñe estrictamente al modelo de validación metodológica establecido en las directrices académicas de la asignatura.
+
+Su objetivo es documentar la integridad, calidad y estructura de los datos brutos (Eurostat) antes de cualquier manipulación. Por tanto, se presenta con un enfoque puramente instrumental y técnico, incluyendo la ejecución directa de código y los tests de validación necesarios para certificar que la "materia prima" cumple con los requisitos de calidad para el análisis posterior.
 
 ### Información general del dataset
 ```{r, echo=F}
@@ -1038,6 +1082,8 @@ data.fechas %>%
 
 ## Preparación de los datos
 <!-- desarrollo de esta fase -->
+Este capítulo actúa como el puente operativo del proyecto. Comenzamos con el **procesado técnico inicial** (limpieza, normalización y cruce de fuentes Eurostat/INE) para construir un dataset analítico robusto. Una vez garantizada la calidad del dato, el capítulo transiciona hacia la **narrativa visual**: el desarrollo secuencial de los 5 actos definidos en los objetivos, donde transformamos las tablas procesadas en la historia económica de la brecha salarial.
+
 
 ### Procesado inicial de los datos
 
@@ -1115,7 +1161,7 @@ geoj1.tb <- geoj1 %>% as_tibble()
 geoj2.tb <- geoj2 %>% as_tibble()
 ```
 
-#### Definición del Indicador Clave: Coste Laboral
+### Definición del Indicador Clave: Coste Laboral
 
 El eje central de este estudio es el Coste Laboral (representado en las gráficas como Coste por hora o Coste por empleado). Es fundamental aclarar que esta métrica refleja la **perspectiva del empleador**, no el bolsillo del empleado.  
 
@@ -1123,7 +1169,7 @@ Representa el coste total en el que incurre una empresa para emplear mano de obr
 
 No debe confundirse con el salario neto que percibe el trabajador en su cuenta bancaria.  
 
-#### Introducción: La Paradoja Europea
+### Introducción: La Paradoja Europea
 
 El objetivo de esta fase inicial no es solo describir los datos, sino comprender por qué España ocupa su posición actual. Para diagnosticar la realidad salarial en Canarias y el resto del país, es necesario ampliar el foco y observar primero el contexto macroeconómico. En este sentido, Europa actúa como un marco de referencia esencial: nos permite evaluar nuestro desempeño contrastándolo no con ideales teóricos, sino con la realidad tangible de los países de nuestro entorno.
 
@@ -1432,7 +1478,7 @@ El resultado es un degradado vertical implacable: mientras las columnas de la iz
 <br>
 Europa nos ha enseñado que trabajar más horas no es la solución. España está atrapada en un modelo de alto presencialismo y bajo valor añadido. Para entender cómo hemos llegado aquí y si hay esperanza de cambio, necesitamos dejar el mapa europeo y hacer zoom sobre nuestra propia historia reciente.
 
-#### Crisis y Convergencia: Trayectoria España
+### Crisis y Convergencia: Trayectoria España
 
 Dejamos el mapa europeo con una conclusión amarga: España trabaja mucho para generar poco valor relativo. Pero, ¿siempre ha sido así? ¿Hemos mejorado con el tiempo o estamos estancados? Para responder a esto, dejamos de mirar a los vecinos y colocamos la lupa sobre la economía española para analizar su evolución en las últimas dos décadas. Lo que encontramos no es una línea de crecimiento sostenido, sino un proceso marcado por la volatilidad y dos caídas económicas.  
 
@@ -1563,7 +1609,7 @@ La conclusión es clara: España no tiene un problema único de productividad; t
 El análisis de nuestra historia reciente confirma que las cicatrices de las crisis no se han curado igual para todos. Mientras algunos sectores han logrado modernizarse y encarecer su hora de trabajo, gran parte del tejido productivo sigue atrapado en costes bajos. Hemos visto la trayectoria temporal (el estancamiento) y la culpable sectorial (la divergencia).  
 Pero, ¿dónde se ubican físicamente estos sectores? ¿Están distribuidos uniformemente por el país o hemos creado zonas de riqueza y pobreza? Para responder a esto, debemos romper el mapa nacional.
 
-#### Heterogeneidad Geográfica
+### Heterogeneidad Geográfica
 
 Al descender del nivel nacional al regional, confirmamos que España no es una economía monolítica, sino un puzle de realidades divergentes. Si en Europa vimos una brecha Norte-Sur, es crucial verificar si ese patrón se replica dentro de nuestras fronteras. Para ello, vamos a confrontar directamente dos variables que la narrativa popular suele unir: lo que ganamos (riqueza) frente a lo que trabajamos (esfuerzo).  
 
@@ -1671,7 +1717,7 @@ El análisis geográfico ha sido devastador para el prejuicio del esfuerzo. Hemo
 
 Si trabajamos más horas para generar menos riqueza y chocamos con un techo salarial bajo... **la causa no puede ser geográfica, tiene que ser sectorial.** ¿En qué trabajamos los canarios para que nuestro esfuerzo valga tan poco?  
 
-#### La Causa Raíz: Estructura Sectorial
+### La Causa Raíz: Estructura Sectorial
 
 Hemos recorrido un largo camino para descartar culpables. Sabemos que no es un problema de "ser españoles" (Europa nos mostró nuestra ineficiencia relativa), ni de las crisis (que afectaron a todos), ni siquiera de vivir en el sur o en una isla (el mapa de esfuerzo nos absolvió).  
 Si trabajamos prácticamente las mismas horas que en el norte pero generamos la mitad de riqueza, la única variable que nos queda es la **naturaleza del trabajo**. El mercado no remunera el esfuerzo bruto, sino el valor añadido y la escalabilidad. Existen actividades donde la tecnología actúa como una palanca que multiplica exponencialmente el rendimiento de cada hora invertida, mientras que otros sectores enfrentan límites estructurales naturales, donde la productividad está acotada por la pura presencia física, independientemente de la dedicación del trabajador. En este capítulo, abrimos la "caja negra" de la economía para demostrar que la desigualdad regional no es más que **desigualdad sectorial disfrazada de geografía**.  
@@ -1768,7 +1814,7 @@ Esta visualización actúa como el diagnóstico definitivo del proyecto. Al cruz
 Ya tenemos al culpable. No es el mapa, es el menú. España sufre de una estructura donde los sectores de alto valor (Finanzas, Tecnología) actúan como islas de riqueza concentradas en Madrid y el Norte, mientras que territorios como Canarias funcionan como enormes plataformas de servicios de bajo coste (Hostelería o Agricultura, entre otros).  
 La pregunta final es inevitable. Si ya sabemos que el sector es el destino... ¿Está Canarias condenada por su especialización turística? ¿Es posible tener un sector turístico eficiente y bien pagado, o estamos atrapados en una trampa de pobreza estructural?
 
-#### Conclusión: El Caso de Canarias
+### Conclusión: El Caso de Canarias
 
 Hemos viajado desde los datos macroeconómicos del continente hasta la estructura sectorial nacional. Ahora, aterrizamos en el "paciente cero" de nuestra tesis: **Canarias**. Si nuestra hipótesis es correcta —que el problema es el modelo productivo y no el trabajador—, los datos deberían mostrar una región que se esfuerza tanto o más que Europa, pero cuyo retorno económico se estanca, desacoplándose de los estándares de bienestar continentales.
 
@@ -2109,7 +2155,7 @@ p_dispersion_estatica <- tb_comparacion_estatica %>%
   ggplot(aes(x = HW_EMP, y = D1_SAL_HW, color = full_name)) + 
   
   # 2. Añadimos la estética 'text' SÓLO a geom_point
-  geom_point(aes(text = paste("País:", full_name,
+  geom_point(aes(text = paste("<b>", full_name, "</b>",
                              "<br>Año:", year,
                              "<br>Horas Trabajadas:", round(HW_EMP, 0),
                              "<br>Coste por Hora:", round(D1_SAL_HW, 2), "€")),
@@ -2144,7 +2190,7 @@ El modelo arroja una recta de regresión con **pendiente negativa** clara (líne
 <br>
 Una vez descartadas las horas como factor de riqueza, utilizamos técnicas multivariantes para identificar qué sectores actúan como "motores" y cuáles como "lastres" en la economía de las Comunidades Autónomas.
 
-```{r matriz-dispersion}
+```{r matriz-dispersion, fig.asp=0.95}
 data %>% 
   filter(item=="D1_SAL_HW", unit=="EUR", substr(geo, 1, 2) == "ES" & NUTS == 2) %>%  
   group_by(full_name, sector_name) %>%
@@ -2344,9 +2390,9 @@ Para garantizar que las conclusiones extraídas del apartado de modelado son rob
 
 Los resultados obtenidos validan una alta fiabilidad en las proyecciones:  
 
-- **Serie España:** El algoritmo seleccionó un modelo <ARIMA(1,1,0) w/ drift>. El RMSE obtenido es de 0.35, lo que indica que el error promedio del modelo es de apenas 35 céntimos de euro sobre el coste real.  
+- **Serie España:** El algoritmo seleccionó un modelo `<ARIMA(1,1,0) w/ drift>`. El RMSE obtenido es de 0.35, lo que indica que el error promedio del modelo es de apenas 35 céntimos de euro sobre el coste real.  
 
-- **Serie Canarias:** Se ajustó un modelo <ARIMA(0,1,1) w/ drift>. El RMSE es de 0.42, implicando un margen de error de 42 céntimos.  
+- **Serie Canarias:** Se ajustó un modelo `<ARIMA(0,1,1) w/ drift>`. El RMSE es de 0.42, implicando un margen de error de 42 céntimos.  
 
 Considerando que los costes laborales oscilan entre los 20€ y 30€, errores inferiores a 0.50€ representan una desviación mínima. La presencia del componente drift (tendencia) en ambos modelos, junto con estos bajos niveles de error, confirma estadísticamente que la divergencia futura observada en las gráficas no es ruido estadístico, sino una tendencia estructural sólida y predecible. Podemos confiar en que, sin cambios externos, la brecha salarial seguirá el camino trazado.
 
