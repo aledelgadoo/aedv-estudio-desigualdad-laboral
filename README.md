@@ -28,3 +28,9 @@ El proyecto ha sido desarrollado íntegramente en **R** utilizando:
 * **IDE:** RStudio
 * **Visualización:** `ggplot2`, `plotly`, `highcharter`, `leaflet`.
 * **Despliegue:** `flexdashboard`, `shiny`.
+
+<br>
+
+<p align="center">
+  <img width="50%" alt="image" src="https://github.com/user-attachments/assets/b4c47d04-6ee6-4bc7-af93-7d05c473e2d6" />
+</p>
