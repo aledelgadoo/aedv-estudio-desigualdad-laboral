@@ -7,7 +7,7 @@
 ## 🚀 Accesos Directos
 
 * 📄 **[Ver Memoria del Proyecto (Web)](https://aledelgadoo.github.io/aedv-estudio-desigualdad-laboral/)**
-<!-- * 📈 **[Ver Dashboard Interactivo](ENLACE_AL_SERVIDOR_SHINY_DIS)** *(Pon aquí el enlace de la universidad)* -->
+* 📈 **[Ver Dashboard Interactivo](https://aledelgadoo.shinyapps.io/shinyapps/)**
 
 ---
 
